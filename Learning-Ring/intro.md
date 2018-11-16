@@ -92,3 +92,6 @@ Handler :  Ring has HTTP response data --> Converts into map --> Invokes handler
 Middleware : Ring has HTTP response data --> Converts into map --> Invokes our app variable with supplied data --> 
              App variable calls the middleware function supplying handler and data --> 
              Middleware function invokes handler with supplied data --> Issues map response
+             
+             
+-- to do , show example middleware functions and process
