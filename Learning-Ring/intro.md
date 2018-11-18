@@ -87,15 +87,17 @@ Now if would like to use this handler, on our Jetty Web Server we could include 
      :body (:remote-addr request)})
    
    (run-jetty handler {:port 3000})
+    ;; now the server is up , if you make a GET request to localhost:3000 you will get back your IP address
+    ;; in the response body.
   ```
 
 Handlers themselves are pretty boring. All they are is a map that Ring gets to translate into a HTTP response, what if we want to verify the data in a client's request, have different types of responses based on what data the client has supplied or format the data a certain way for the handler. My friend, I introduce you to **middleware**. 
 
-Middleware extends the functionality of handlers by returning functions not data. Middleware functions need to take the original handler as it's first argument, followed by whatever data you want to be added or other functions to operate on the handler data etc. What the middleware function returns is a function ,our new handler function, which takes a request map and we will call the old handler with that map so that our middleware gets the hashmap of data we want to manipulate. We then wrap it however we would like and then send it off to Ring.
+Middleware extends the functionality of handlers by returning functions not data. Middleware functions need to take the original handler as it's first argument, followed by whatever data you want to be added or other functions to operate on the handler data etc. What the middleware function returns is a function ,our new handler function, which takes a request map and we will call the old handler with that map so that our middleware gets the hashmap of data we want to manipulate. We then operate on the data however we would like and then send it off to Ring.
 
-Let's say we are in the middle of making a Medium clone and we want to have the functionality to track how many articles a user has viewed. We decide that after they have viewed 5 articles for free they can view no more! If we were to just use a handler for this, we could write :
+To look at a real world example, let's imagine we have a website.Now , a user has just completed one of our forms to become a member, and the form data is passed to us in their HTTP request, more specifically in the body is all of the customers json data.  Now this is a bit tricky as while the response map itself is a clojure hashmap the actual data mapped to the ```:body``` keyword is left unconverted. What we can do is use the ring/json wrapper
 
-
+-- to do , show example code
 
 Essentially, these are the differences between handler and middleware. 
 
@@ -106,22 +108,7 @@ Middleware : Ring has HTTP response data --> Converts into map --> Invokes our a
              App variable calls the middleware function supplying handler and data --> 
              Middleware function invokes handler with supplied data --> Issues map response
              
-             
--- to do , show example middleware functions and process
-
-Alright I think it is about time I walked through how this works. Let's say we are making a [Medium](https://www.medium.com) clone, and we want to , at a very rudimentary level, implement a counter for how many articles a client has viewed.
 
 The issue with a handler sticking to the Ring specification would be it forces us to make use of global state as we can only take the one argument being the request map. 
-  
-  ```Clojure
-  (defn handler
-    [request]
-    
-    ;; to do , show issues and refactor with use of middleware.
-    
-    {:status 200
-     :headers {"Content-Type" "text/plain"}                   
-     :body (str "You have viewed " @view-count " articles this month. " )})
-  ```
-  
+
 Without middleware we wouldn't be able to add higher-order-functionality or local state into our response maps. 
