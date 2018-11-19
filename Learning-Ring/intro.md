@@ -95,20 +95,75 @@ Handlers themselves are pretty boring. All they are is a map that Ring gets to t
 
 Middleware extends the functionality of handlers by returning functions not data. Middleware functions need to take the original handler as it's first argument, followed by whatever data you want to be added or other functions to operate on the handler data etc. What the middleware function returns is a function ,our new handler function, which takes a request map and we will call the old handler with that map so that our middleware gets the hashmap of data we want to manipulate. We then operate on the data however we would like and then send it off to Ring.
 
-To look at a real world example, let's imagine we have a website.Now , a user has just completed one of our forms to become a member, and the form data is passed to us in their HTTP request, more specifically in the body is all of the customers json data.  Now this is a bit tricky as while the response map itself is a clojure hashmap the actual data mapped to the ```:body``` keyword is left unconverted. What we can do is use the ring/json wrapper
+To look at a real world example, let's imagine we have a website.Now , a user has just completed one of our forms to become a member, and the form data is passed to us in their HTTP request, more specifically in the body is all of the customers json data.  Now this is a bit tricky as while the response map itself is a clojure hashmap the actual data mapped to the ```:body``` keyword is left as unconverted json. What we can do is use the json middleware that is provided to us by the [ring-json](https://github.com/ring-clojure/ring-json) library to convert json into clojure data structures. 
 
--- to do , show example code
+If we look in the library and see the ```wrap-json-body``` function it says :
 
-Essentially, these are the differences between handler and middleware. 
+  ```
+  "Middleware that parses the body of JSON request maps, and replaces the :body
+  key with the parsed data structure. Requests without a JSON content type are
+  unaffected.
+  
+   Accepts the following options:
+  :keywords?          - true if the keys of maps should be turned into keywords
+  :bigdecimals?       - true if BigDecimals should be used instead of Doubles
+  :malformed-response - a response map to return when the JSON is malformed"
+  ```
+  
+The library also shows the idiomatic way of doing this:
 
-Handler :  Ring has HTTP response data --> Converts into map --> Invokes handler with the supplied data -->
-           Issues response map response
-           
-Middleware : Ring has HTTP response data --> Converts into map --> Invokes our app variable with supplied data --> 
-             App variable calls the middleware function supplying handler and data --> 
-             Middleware function invokes handler with supplied data --> Issues map response
-             
+  ```Clojure
+  (use '[ring.middleware.json :only [wrap-json-body]]
+       '[ring.util.response :only [response]])
 
-The issue with a handler sticking to the Ring specification would be it forces us to make use of global state as we can only take the one argument being the request map. 
+  (defn handler [request]
+    (prn (get-in request [:body "user"]))
+    (response "Uploaded user."))
+    ;; response just Ring response with the given body, status of 200, and no headers.
 
-Without middleware we wouldn't be able to add higher-order-functionality or local state into our response maps. 
+  (def app
+    (wrap-json-body handler {:keywords? true :bigdecimals? true}))
+    
+  ;; (run-jetty app {:port 3000}) would call app and be given the handler function inside. 
+  ```
+
+So , our handler is given the request map, which itself has been converted in Clojure, but the ```:body``` is still json. We extract that data out with ```get-in```
+
+I think it is best to start from the app and then see what is happening in the middleware, as the app is what is called by jetty and is ran first. In our ```app``` variable, the wrapper is called and we pass our desired handler to it, and we would like use clojure keywrods as the json map keys. As we know with all middleware, their common pattern is to return a function, which accepts the request map. When our web server calls app , it will pass the request map to it. Let's see what happens inside that function :
+
+###### ring-json/json.clj --> wrap-json-body ######
+
+  ```Clojure
+    (fn
+    ([request]
+     (if-let [request (json-body-request request options)]
+       (handler request)
+       malformed-response))
+  ```
+So , the ```json-body-request``` function is called which converts the data. Now if the json is not malformed (corrupt) then the operation will go through and we will return call the original handler with the clojure hashmap. Don't worry about the ```prn``` , as that is just how this handler has chosen to output the data. If the json is malformed, then we return the malformed-response map.
+
+Thanks to the ```wrap-json-body``` handler , this functionality can be used in any new handler we define, and the handler doesn't need to be aware of the different formats. It's only concern is working with the clojure data. Moreover, we don't have to repeat this logic over and over, as it would be likely to come up again in other interactive parts of a website where data is being submitted from the user.
+
+## Conclusion
+
+Essentially, these are the differences between handler and middleware.
+
+Handler : 
+
+  ```
+  Ring has HTTP response data --> 
+  Converts into map --> 
+  Invokes handler with the supplied data --> 
+  Issues response map response
+  ```
+Middleware : 
+
+  ```
+  Ring has HTTP response data --> 
+  Converts into map --> 
+  Invokes our app variable with supplied data --> 
+  App variable calls the middleware function supplying handler and data --> 
+  Middleware function invokes handler with supplied data -->
+  Issues map response
+  ```    
+The reason we use middleware is to separate the concerns with handlers and let them focus on servicing the requests and responses as simply as possible. Middleware contains logic that would otherwise be repeated all over the program, moreover as they ultimately return a response map after the inner function call, they can be composed and allow functionality to be layered, the result being simpler programs. What should stay in a handler and what should be extracted out into middleware can be tricky at times , but the general rule of thumb is to have unique, custom-made logic stay in the appropriate handler, and general-use functionality in middleware. 
