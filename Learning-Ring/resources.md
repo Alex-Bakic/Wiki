@@ -14,4 +14,4 @@ Deeper dives into architecture and principle
 7. [Concerns with Ring - Reddit Discussion](https://www.reddit.com/r/Clojure/comments/4pb0la/concerns_with_ring/)
 8. [Synchronous and Asyncronous Messaging Defined](http://www.cs.unc.edu/~dewan/242/s07/notes/ipc/node9.html)
 9. [Asynchronous Handlers in Ring - Blog Post](https://www.booleanknot.com/blog/2016/07/15/asynchronous-ring.html)
-10.[Asynchronous Handlers in Ring - Reddit Discussion](https://www.reddit.com/r/Clojure/comments/4t1dck/an_overview_of_asynchronous_ring/)
+10. [Asynchronous Handlers in Ring - Reddit Discussion](https://www.reddit.com/r/Clojure/comments/4t1dck/an_overview_of_asynchronous_ring/)
