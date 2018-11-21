@@ -100,10 +100,36 @@ With that it is time to move onto sessions.
 
 #### Sessions
 
+Now we're onto the topic of session management, as always we have to wrap the request map first before we can pick things out and put them in our response so we'll be making good use of the ```wrap-session``` middleware from ```ring.middleware.session```. Session data is kept in the ```:session``` key and if we use it in our response it will signal to ring we want to update some of the data. Maybe we want to kill or restart a session.
 
+  ```Clojure
+  (defn handler [{session :session}]
+    (let [count   (:count session 0)
+        session (assoc session :count (inc count))]
+        ;; session takes all the data from the previous session but instead associates the :count key with the value 1
+      (-> (response (str "You accessed this page " count " times."))
+        (assoc :session session))))
+   
+   
+     ;; adds the session variable that is defined in let into the response message.
+  
+  (def app (wrap-session handler {:cookie-attrs {:secure true}}))
+  ;; this is a best practice as it means that our session cookie is not leaked through HTTP and wrapped with HTTPS.
+  ```
 
+Now if we actually want to grab some of the data from the session we need to get it from what's called a ```session store```. There are two means of storing sessions, one being ```ring.middleware.session.memory/memory-store``` and the other being ```ring.middleware.session.cookie./cookie-store```.Now by default Ring stores session data in the browser memory, but this can be overriden to store all the session data like usernames,passwords,emails etc into an encrypted cookie. 
 
+We need to specify this when we wrap our handler, as we can provide additional options, so the corresponding changes are done to the request map.
 
+  ```Clojure
+  (use 'ring.middleware.session.cookie)
+
+  (def app
+    (wrap-session handler {:store (cookie-store {:key "a 16-byte secret"})})
+  ;; note that if a key is supplied it does have to be exactly 16 bytes.
+  ```
+
+And that is it for this chapter, but we have only scratched the surface of all the middleware that is available. To view all the functionality at your fingertips [click here for the documentation](https://ring-clojure.github.io/ring/ring.middleware.content-type.html).
 
 
 
