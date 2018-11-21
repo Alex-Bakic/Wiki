@@ -36,12 +36,81 @@ Looking back on our handler, we could add some additional security features like
 
   ```Clojure
   {...
-  :cookies {"much_better" {:value "some-hash", :secure true, :max-age 600}} ;; only available for 600 seconds (10 mins)! 
+   :cookies {"much_better" {:value "some-hash", :secure true, :max-age 600}} ;; only available for 600 seconds (10 mins)! 
    ...}
   ```
   
-  #### Files
+#### Files
   
-  The next thing we'll take a look at is uploaded files to a website and subsequently operating on them.
+The next thing we'll take a look at is files, namely uploading them and being able to operate on them. Now this process is unique since that it goes beyond just working with HTTP and converting the keywords into hashmaps and what not, Ring has to do the work of saving the file (either into a .tmp file or a function that we specify) and when we use that file in subsequent responses Ring will need to be able to convert it and pass it along. It certainly is more than the average job, and so we need two handlers from the ```ring.middleware``` library, namely ```wrap-params``` and ```wrap-multipart-params```. 
+
+```wrap-params``` is pretty simple, it just adds the ```:params``` key to the request map and puts things from the query string into there.  
+
+```wrap-multipart-params``` is the handler which deals with actually storing the file, as either a Java object or as a temp file. Temp files are stored under the ```:params``` key. 
+
+When we wrap our handler with these two, they (again) come into contact with the request map before the handler does and adds the ```file``` key to the ```:params``` submap, making the request map look like:
+
+  ```Clojure
+  {...
+  :params
+   {"file" {:filename     "words.txt"
+            :content-type "text/plain"
+            :tempfile     #object[java.io.File ...]
+            :size         51}}
+  ...}
+  ```
+
+The handler itself could look like 
+
+  ```Clojure
+  (defn upload-some-file
+    [{my-file :params}]
+    ;; returns a map of the file and any other params
+    {:status 200
+     :headers {}
+     :body (str "You have just added the file : " (get-in my-file ["file :filename"])) 
+    })
+    
+  (def app
+   (wrap-multipart-params (wrap-params upload-some-file)))
+
+  (comment 
+  
+    ;; could instead of the above , do
+    
+    (def app
+      (-> upload-some-file
+          wrap-params
+          wrap-multipart-params))
+  
+  )
+
+  (run-jetty app {:port 3000})
+  ```
+
+And once the server is up we could run
+
+  ```
+  curl -XPOST  "http://localhost:3000" -F file=@words.txt
+  ```
+  
+At the terminal and we should see our file name. 
+
+With that it is time to move onto sessions. 
+
+#### Sessions
+
+
+
+
+
+
+
+
+
+
+
+
+
   
   
