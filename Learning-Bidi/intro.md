@@ -55,21 +55,39 @@ Whilst this works **it is not the way you should be doing it.** The reason bidi 
     ;; calls the imaginary hiccup file with the html for index.html
   
   (def route ["/index.html" :index])
-  ;; use a keyword as the placeholder for the handler. It now makes it much easier to edit the handler itself
-  ;; without affecting the routes.
+  ;; use a keyword as the placeholder for the handler. This acts as the link to the resource
+  ;; It now makes it much easier to edit the handler itself without affecting the routes.
   
-  (def handlers {:handler 
-    {:index #'learning-bidi/index-handler}
-  })
+  ;; we use the :index keyword to link to the handler
+  (def handlers {:index index-handler})
   
-  ;; now when we call the match-route function from the repl
+  ;; now when we call the match-route function
   (b/match-route route "/index.html")
-  => {:handler :index}
+  ;; => {:handler :index} , where :handler is the key and :index is the value
+  ;; if we were to supply a resource which is not defined in the route we would get nil.
+  ```
 
-  With :index we go to the handlers map ...
+So to recap, we define a ring-compatible handler which returns the response for when someone asks for the `/index.html` resource, either due to some functionality that we specify or they just type it themselves into the url bar. We then must define the route, which is responsible for making sure that specific handler is matched for that particular request. So in this case we use the `:index` keyword to link the "/index.html" path to the handler. 
+
+I've made a map of handlers called `handlers` so that when the site expands we have a system of calling them. As for right now, this is what we could do to start the app.
+  
+  ```Clojure
+  (require '[ring.adapter.jetty :as j])
+  
+  (def app (:index handlers))
+  
+  (j/run-jetty app {:port 3000})
   ```
   
+Now let's look at how we can define routes *going the other way*. What I mean is that this time we give bidi a result, typically a keyword, and we get back a pattern using the `path-for` function. It finds the *path-for* a given keyword.
+
+  ```Clojure
+  (def route ["/index.html" :index])
   
+  (path-for route :index)
+  ;; => "/index.html"
+  ```
   
-  
-  
+Now you might be thinking *"what's the point in that?"* Well the point of it so you don't have to hard-code you URIs, allowing for flexible routing and you can change them easily without breaking anything. It means in another page if you wanted to have the link to that resource in your view then you could just call the function. This is useful for resources that go in the `public` directory for example, where the webserver looks to serve assets and images.
+
+-- to do , multiple routes
