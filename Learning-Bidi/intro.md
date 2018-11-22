@@ -43,3 +43,33 @@ function :
   => {:status 200, :headers {}, :body "Welcome to index.html"}
 
   ```
+
+Whilst this works **it is not the way you should be doing it.** The reason bidi separates the route matching with the actual handling is so we can have some decoupling between the route code and our handler code. The abstraction is typically a keyword which can be used to lookup the handler in a map of handlers. I.e.
+
+  ```Clojure
+  (ns learning-bidi)
+  
+  (defn index-handler [request] 
+    "Handler for the index.html resource"
+    (r/response (hiccup-index-html-resource)))
+    ;; calls the imaginary hiccup file with the html for index.html
+  
+  (def route ["/index.html" :index])
+  ;; use a keyword as the placeholder for the handler. It now makes it much easier to edit the handler itself
+  ;; without affecting the routes.
+  
+  (def handlers {:handler 
+    {:index #'learning-bidi/index-handler}
+  })
+  
+  ;; now when we call the match-route function from the repl
+  (b/match-route route "/index.html")
+  => {:handler :index}
+
+  With :index we go to the handlers map ...
+  ```
+  
+  
+  
+  
+  
