@@ -122,7 +122,7 @@ Now then, as our website grows we'll also have more pages, namely articles. To i
   ```Clojure
   (def my-routes ["/" {"index.html :index
                        "articles/" {"index.html" :article-index
-                                     "article.html :article"}}])
+                                     "article.html" :article}}])
                                      
   (match-route my-routes "/index.html")
   ;; => {:handler :index}
@@ -136,6 +136,23 @@ Now then, as our website grows we'll also have more pages, namely articles. To i
   ;; => "/article/index.html"
   ```
   
+Now let's move onto introducing some variables in our paths. It would be pretty painful for us to write our like a hundred different paths under the `articles/` pattern. What if we could include a little variable like /articles/123/article.html so that we only have to write out article.html *once* but keep the *many* different articles that are actually on the site.
+
+What we need to do, under the `articles/` pattern, where we want to include an `:id` we need to put it inside of a vector. This is because the pattern has grown into multiple parts and we need to organise them. This is what I'm getting at ->
+
+  ```Clojure
+  (def my-routes ["/" {"index.html :index
+                       "articles/" {"index.html" :article-index
+                                     [:id "/article.html"] :article}}])
+                                     
+  ;; as we wanted the :id to be in the middle, we put it in between the articles/ directory pattern
+  ;; and the article.html file pattern      
   
+  ;; now when we match routes 
+  
+  (match-route my-routes "/articles/1/article.html")
+  ;; => {:handler :article, :route-params {:id "1"}}
+  ```
+The `:id` is extracted out of the handler and into a new :route-params key. In addition to this we should separate the id from the pattern when we use the `path-for` function .  
   
   
