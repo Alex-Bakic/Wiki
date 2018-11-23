@@ -17,7 +17,7 @@ To define a route, we just define a tuple, with a pattern and a result.
              ring.util.response :as r])
   
   ;; just routing for the home page, index.html
-  (def route ["/index.html" (defn index-handler [request] (r/response "Welcome to index.html"))])
+  (def my-route ["/index.html" (defn index-handler [request] (r/response "Welcome to index.html"))])
   
   ;; the pattern being the URI of the resource, and the result being the corresponding handler.
   ```
@@ -29,7 +29,7 @@ result of a certain route , bidi would give me the map that tells us how to get 
 function :
 
   ```Clojure
-  (b/match-route route "/index.html")
+  (b/match-route my-route "/index.html")
   
   => {:handler #'user/index-handler}
   ;; returns a map , with the :handler key mapping to the location where our corresponding handler is.
@@ -39,7 +39,7 @@ function :
  with a request map like ring does it works like normal.
  
   ```Clojure
-  ((:handler (b/match-route route "/index.html")) {:status 200 :headers {} :body ""})
+  ((:handler (b/match-route my-route "/index.html")) {:status 200 :headers {} :body ""})
   => {:status 200, :headers {}, :body "Welcome to index.html"}
 
   ```
@@ -47,14 +47,12 @@ function :
 Whilst this works **it is not the way you should be doing it.** The reason bidi separates the route matching with the actual handling is so we can have some decoupling between the route code and our handler code. The abstraction is typically a keyword which can be used to lookup the handler in a map of handlers. I.e.
 
   ```Clojure
-  (ns learning-bidi)
-  
   (defn index-handler [request] 
     "Handler for the index.html resource"
     (r/response (hiccup-index-html-resource)))
     ;; calls the imaginary hiccup file with the html for index.html
   
-  (def route ["/index.html" :index])
+  (def my-route ["/index.html" :index])
   ;; use a keyword as the placeholder for the handler. This acts as the link to the resource
   ;; It now makes it much easier to edit the handler itself without affecting the routes.
   
@@ -62,7 +60,7 @@ Whilst this works **it is not the way you should be doing it.** The reason bidi 
   (def handlers {:index index-handler})
   
   ;; now when we call the match-route function
-  (b/match-route route "/index.html")
+  (b/match-route my-route "/index.html")
   ;; => {:handler :index} , where :handler is the key and :index is the value
   ;; if we were to supply a resource which is not defined in the route we would get nil.
   ```
@@ -82,12 +80,62 @@ I've made a map of handlers called `handlers` so that when the site expands we h
 Now let's look at how we can define routes *going the other way*. What I mean is that this time we give bidi a result, typically a keyword, and we get back a pattern using the `path-for` function. It finds the *path-for* a given keyword.
 
   ```Clojure
-  (def route ["/index.html" :index])
+  (def my-route ["/index.html" :index])
   
-  (path-for route :index)
+  (path-for my-route :index)
   ;; => "/index.html"
   ```
   
-Now you might be thinking *"what's the point in that?"* Well the point of it so you don't have to hard-code you URIs, allowing for flexible routing and you can change them easily without breaking anything. It means in another page if you wanted to have the link to that resource in your view then you could just call the function. This is useful for resources that go in the `public` directory for example, where the webserver looks to serve assets and images.
+Now you might be thinking *"what's the point in that?"* Well the point of it so you don't have to hard-code you URIs, allowing for flexible routing and you can change them easily without breaking anything. It means in another page if you wanted to have the link to that resource in your view then you could just call the function. Say we have some hiccup data we can just replace the path we would put in `href` or the `path-for` function.
 
--- to do , multiple routes
+  ```Clojure
+  [:ul
+      [:li [:a {:href (bidi/path-for app-routes :contact)} "Link to contact page"]]
+      [:li [:a {:href (bidi/path-for app-routes :index)} "Link to other home page"]]
+      [:li [:a {:href (bidi/path-for app-routes :blog)} "Link to my blog page"]]]
+  ```
+
+Alright, now let's move onto multiple routes, as it's likely we'll want to define more than one :grin:
+
+Now the pattern that is the first part of the route will match two or more routes, but only *partially*. The result is split *further* now in the form of a map, the first element being the sub-section of the path and the result being the keyword as normal. 
+
+So in the example below the *common* prefix is `/` , which is the root of the webserver. Now we want to define a handler for `/index.html` and another for `/article.html`.
+
+  ```Clojure
+  (def my-routes ["/" {"index.html" :index
+                       "article.html" :article}])
+                    
+  ;; "/" is the inital pattern, which then looks in the map for the next pattern, either index or article .html.
+  ```
+
+A little thing to remember that might trip you up when first doing this is include the `/` when matching routes. If we were to ask for `article.html` , we can't ask for it directly as it is under `/` which we need to include.
+
+  ```Clojure
+  user=> (match-route my-routes "article.html")
+  nil
+  user=> (match-route my-routes "/article.html")
+  {:handler :article}
+  ```
+
+Now then, as our website grows we'll also have more pages, namely articles. To include them is no problem, what we can do is create the `articles/` sub-pattern and then have another map full of the different articles. 
+
+  ```Clojure
+  (def my-routes ["/" {"index.html :index
+                       "articles/" {"index.html" :article-index
+                                     "article.html :article"}}])
+                                     
+  (match-route my-routes "/index.html")
+  ;; => {:handler :index}
+  (match-route my-routes "/article.html")
+  ;; => nil
+  (match-route my-routes "/articles/article.html")
+  {:handler :article}
+  
+  ;; and in reverse too...
+  (path-for my-routes :article-index)
+  ;; => "/article/index.html"
+  ```
+  
+  
+  
+  
