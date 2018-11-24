@@ -141,18 +141,41 @@ Now let's move onto introducing some variables in our paths. It would be pretty 
 What we need to do, under the `articles/` pattern, where we want to include an `:id` we need to put it inside of a vector. This is because the pattern has grown into multiple parts and we need to organise them. This is what I'm getting at ->
 
   ```Clojure
-  (def my-routes ["/" {"index.html :index
+  (def my-routes ["/" {"index.html" :index
                        "articles/" {"index.html" :article-index
                                      [:id "/article.html"] :article}}])
                                      
-  ;; as we wanted the :id to be in the middle, we put it in between the articles/ directory pattern
-  ;; and the article.html file pattern      
+  ;; as we wanted the URI to be /article/:id/article we should have :id be in the middle, 
+  ;; so we put it in between the articles/ directory pattern and the article.html file pattern      
   
   ;; now when we match routes 
   
   (match-route my-routes "/articles/1/article.html")
   ;; => {:handler :article, :route-params {:id "1"}}
   ```
-The `:id` is extracted out of the handler and into a new :route-params key. In addition to this we should separate the id from the pattern when we use the `path-for` function .  
+The `:id` is extracted out of the handler and into a new :route-params key. In addition to this the same semantic is used to separate the id from the pattern when we use the `path-for` function.
+
+  ```Clojure
+  (path-for my-routes :article)
+  ;; => ExceptionInfo Cannot form URI without a value given for :id parameter
   
+  (path-for my-routes :article :id 1)
+  ;; => "/articles/1/article.html"
+  ```
+  
+By including a variable like `:id` it makes our URIs much more flexible and as it is extracted, functions that might communicate to the database and fetch articles with certain ids. A complete example of everything we have learned so far can be seen below:
+
+  ```Clojure
+  (comment "
+    
+    so I'll just use the clojure.java.jdbc library for this example. When Ring comes to us with a request map, we 
+    grab the URI out for parsing.  We have a handler defined for when a user requests an article , which references 
+    our db.
+    
+  ")
+  
+  (defn fetch-article
+    [db-map {id :route-params} client]
+    ())
+  ```
   
