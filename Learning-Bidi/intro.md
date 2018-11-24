@@ -168,14 +168,55 @@ By including a variable like `:id` it makes our URIs much more flexible and as i
   ```Clojure
   (comment "
     
-    so I'll just use the clojure.java.jdbc library for this example. When Ring comes to us with a request map, we 
-    grab the URI out for parsing.  We have a handler defined for when a user requests an article , which references 
-    our db.
-    
+    so I'll just use the clojure.java.jdbc library for this example. When Ring comes to us with a 
+    request map, we grab the URI out for parsing.  We have a handler defined for when a user 
+    requests an article , which references our db.
+   
   ")
   
-  (defn fetch-article
-    [db-map {id :route-params} client]
-    ())
+  ;; to do , include ns and edits 
+  (require '[ring.middleware.response :as rr
+             ring.adapter.jetty :as rj
+             bidi.bidi :as b
+             clojure.java.jdbc :as j]))
+
+  (def ^:private mysql-db {:dbtype "mysql"
+                           :dbname "project-db"
+                           :user "admin"
+                           :password "admin"})
+                           
+  (defn pull-from-uri
+    "Example:
+
+     :uri is /articles/123/article.html
+     so we use this with route-map to find a match
+     with the current routes setup , with this as the uri we would
+     be returning {:handler :article :route-params {:id 123}}
+    "
+    [route-map {uri :uri}]
+    (b/match-route route-map uri))                           
+                           
+  (defn index-handler
+    [request]
+    (rr/response "<body>Some more html...<body>"))
+
+  (defn article-handler
+    "request is the ring response map. \n
+     routes is the result of the pull-from-uri function"
+    [db-map request]
+    (let [uri (pull-from-uri request)
+          {{id :id} :route-params} uri
+          result (j/query db-map ["select article from articles where id = ?" id])]
+      (r/response result)))                            
+  
+  (def handlers {:index index-handler
+                 :article (partial article-handler mysql-db)})  
+                 
+  ;; will discuss this and working with ring further in the next chapter.
+  (def app-routes (b/make-handler ["/" {"index.html" (:index handlers)
+                                        "articles/" {[:id "/article.html"] (:article handlers)}}])
+                                        
+                                        
+  (def app (rj/run-jetty app-routes {:port 3000}))
   ```
   
