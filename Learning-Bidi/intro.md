@@ -168,7 +168,7 @@ By including a variable like `:id` it makes our URIs much more flexible and as i
   ```Clojure
   (comment "
     
-    so I'll just use the clojure.java.jdbc library for this example. When Ring comes to us with a 
+    so I'll use the clojure.java.jdbc library for this example. When Ring comes to us with a 
     request map, we grab the URI out for parsing.  We have a handler defined for when a user 
     requests an article , which references our db.
    
@@ -220,3 +220,4 @@ By including a variable like `:id` it makes our URIs much more flexible and as i
   (def app (rj/run-jetty app-routes {:port 3000}))
   ```
   
+And that's where we'll leave it for now. In the next chapter, we'll look at how bidi can integrate with Ring to make a proper project.
