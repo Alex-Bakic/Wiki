@@ -175,9 +175,9 @@ By including a variable like `:id` it makes our URIs much more flexible and as i
   ")
   
   ;; to do , include ns and edits 
-  (require '[ring.middleware.response :as rr
+  (require '[ring.util.response :as rr
              ring.adapter.jetty :as rj
-             bidi.bidi :as b
+             bidi.ring :as b
              clojure.java.jdbc :as j]))
 
   (def ^:private mysql-db {:dbtype "mysql"
