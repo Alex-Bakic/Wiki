@@ -13,8 +13,8 @@ Let's jump into the repl to see how this all works:
 To define a route, we just define a tuple, with a pattern and a result.
 
   ```Clojure
-  (require '[bidi.bidi :as b
-             ring.util.response :as r])
+  (require [bidi.bidi :as b]
+           [ring.util.response :as r])
   
   ;; just routing for the home page, index.html
   (def my-route ["/index.html" (defn index-handler [request] (r/response "Welcome to index.html"))])
@@ -163,22 +163,14 @@ The `:id` is extracted out of the handler and into a new :route-params key. In a
   ;; => "/articles/1/article.html"
   ```
   
-By including a variable like `:id` it makes our URIs much more flexible and as it is extracted, functions that might communicate to the database and fetch articles with certain ids. A complete example of everything we have learned so far can be seen below:
+By including a variable like `:id` it makes our URIs much more flexible and as it is extracted, functions that might communicate to the database and fetch articles with certain ids. A complete example of everything we have learned so far can be seen below. Put it in your own `example.clj` file and run it in a repl.
 
-  ```Clojure
-  (comment "
-    
-    so I'll use the clojure.java.jdbc library for this example. When Ring comes to us with a 
-    request map, we grab the URI out for parsing.  We have a handler defined for when a user 
-    requests an article , which references our db.
-   
-  ")
-  
-  ;; to do , include ns and edits 
-  (require '[ring.util.response :as rr
-             ring.adapter.jetty :as rj
-             bidi.ring :as b
-             clojure.java.jdbc :as j]))
+  ```Clojure  
+  (ns example
+    (:require '[ring.util.response :as rr]
+              '[ring.adapter.jetty :as rj]
+              '[bidi.ring :as b]
+              '[clojure.java.jdbc :as j]))
 
   (def ^:private mysql-db {:dbtype "mysql"
                            :dbname "project-db"
@@ -199,10 +191,11 @@ By including a variable like `:id` it makes our URIs much more flexible and as i
     (partial article-handler db-map id))
 
   (def app-routes (b/make-handler ["/" {"index.html" index-handler
-                         "articles/" [:id "/article.html"] (wrap-article-handler mysql-db :id)}]))
+                                       ["articles/" :id "/article.html"] (wrap-article-handler mysql-db :id)}]))
 
   (def app (rj/run-jetty app-routes {:port 3000}))
 
   ```
-  
+Now copy `http://localhost:3000/index.html` into your browser and you should see the message!
+
 And that's where we'll leave it for now. In the next chapter, we'll look at how bidi can integrate with Ring to make a proper project.
