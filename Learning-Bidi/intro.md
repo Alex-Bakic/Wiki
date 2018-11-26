@@ -184,40 +184,25 @@ By including a variable like `:id` it makes our URIs much more flexible and as i
                            :dbname "project-db"
                            :user "admin"
                            :password "admin"})
-                           
-  (defn pull-from-uri
-    "Example:
 
-     :uri is /articles/123/article.html
-     so we use this with route-map to find a match
-     with the current routes setup , with this as the uri we would
-     be returning {:handler :article :route-params {:id 123}}
-    "
-    [route-map {uri :uri}]
-    (b/match-route route-map uri))                           
-                           
   (defn index-handler
     [request]
-    (rr/response "<body>Some more html...<body>"))
+    (rr/response "<body>Welcome to the index page</body>"))
 
   (defn article-handler
-    "request is the ring response map. \n
-     routes is the result of the pull-from-uri function"
-    [db-map request]
-    (let [uri (pull-from-uri request)
-          {{id :id} :route-params} uri
-          result (j/query db-map ["select article from articles where id = ?" id])]
-      (r/response result)))                            
-  
-  (def handlers {:index index-handler
-                 :article (partial article-handler mysql-db)})  
-                 
-  ;; will discuss this and working with ring further in the next chapter.
-  (def app-routes (b/make-handler ["/" {"index.html" (:index handlers)
-                                        "articles/" {[:id "/article.html"] (:article handlers)}}])
-                                        
-                                        
+    [db-map id request]
+    (let [result (j/query db-map ["select article from articles where id = ?" id])]
+      (rr/response result)))
+
+  (defn wrap-article-handler
+    [db-map id]
+    (partial article-handler db-map id))
+
+  (def app-routes (b/make-handler ["/" {"index.html" index-handler
+                         "articles/" [:id "/article.html"] (wrap-article-handler mysql-db :id)}]))
+
   (def app (rj/run-jetty app-routes {:port 3000}))
+
   ```
   
 And that's where we'll leave it for now. In the next chapter, we'll look at how bidi can integrate with Ring to make a proper project.
