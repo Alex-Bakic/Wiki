@@ -61,6 +61,6 @@ In the guard maps we can specify different types of data, from just a single val
         {:request-method :post :content-type "text/html"}
           {"/article.html" article-handler}}]
   ```
--- to do, explain the structure of the route table
+So the `"/"` is the root of our  project. It is the first pattern that is matched and the result is a further subset of patterns. Next the webserver checks the URI against "article" which is mapped to the guard for `index.html`. It checks whether the request method is in fact `GET` and if it is will return the index-handler. The next pair in the map is the pattern, more specifically a whole guard map which the URI must pass in order to load the `article.html` file. Moreover, the `:request-method` and `:content-type` must be met otherwise an error is thrown. *All in all, we can choose to either match the request attributes as the key to a header, have a separate map checking the uri pattern or both*.
 
--- show that all the methods and things we can specify to guard are specified by the ring request map. Which can be seen [here](https://github.com/Alex-Bakic/Wiki/blob/master/Learning-Ring/intro.md).
+When we are defining all the methods and things we can specify to guards, they can be specified by the ring request map. Which can be seen [here](https://github.com/Alex-Bakic/Wiki/blob/master/Learning-Ring/intro.md). With middleware that add things like `:session` and `:cookie` you can make some guards work as authentication and validation mechanisms to improve the security of your application. For example, the authorization and authentication library [friend](https://github.com/cemerick/friend) has middleware for things like user-agents, uris and two factor authentication.
