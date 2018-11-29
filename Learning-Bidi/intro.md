@@ -134,6 +134,19 @@ When we are matching routes, the client would typically type something like "/ar
   ```
 Note : Make sure to put this route *last* otherwise it will obviously be matched and then return the incorrect 404 which should only be matched when all other patterns come up false.
 
+On this topic, we can also do redirect when a client enters something that *used* to be there but has been updated, replaced or deleted. Like when a website updates and changes it's layout, some of the routes may change over time. Now if someone enters one of the "old" routes, they aren't necessarily wrong and should be shown the new content.
+
+  ```Clojure
+  (defn updated-handler [req] {:status 200 :body "Welcome to my new article..."})
+
+  ["/articles" {"/new" updated-handler
+                "/old" (->Redirect 307 updated-handler)}] 
+                
+  ;; 307 is the status code, which is necessary to state as there are 8 different ways of approaching redirection. 
+  ;; the reason we chose 307 is because it means that the next time the client enters the "wrong" uri, it will be
+  ;; accepted. 308 on the other hand would say all future requests in the session should use another uri. 
+  ```
+
 Now then, as our website grows we'll have more pages, namely articles. To include them is no problem, what we can do is create the `articles/` sub-pattern and then have another map full of the different articles. 
 
   ```Clojure
