@@ -38,8 +38,6 @@ In our example, we use the pattern ```["articles/" :id "/article.html"] ``` to s
                                    
   ```
  
- -- to do show how to define selected input methods like :get :post etc.
- 
 The next thing we're going to look at are `guards`. Now whilst not essential to building projects in bidi, I find that that writing routes with guards helps to make them more robust. What they do is wrap around a route, adding some *constraints* to them  
 
   ```Clojure
