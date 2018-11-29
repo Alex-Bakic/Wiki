@@ -117,7 +117,24 @@ A little thing to remember that might trip you up when first doing this is inclu
   {:handler :article}
   ```
 
-Now then, as our website grows we'll also have more pages, namely articles. To include them is no problem, what we can do is create the `articles/` sub-pattern and then have another map full of the different articles. 
+When we are matching routes, the client would typically type something like "/article.html" to match `:article` and "index.html" to match `:index`. But what if we wanted a pattern that would match *anything* the client typed. To make sure that no matter what they would land on some resource. Now, this functionality is used for 404 pages to tell the client that the page they requested doesn't actually exist. To do this, we just put ```true``` as the pattern which will match anything that the user puts in as any value is considered "truthy" in Clojure.
+
+  ```Clojure
+  (defn not-found-handler
+    [req]
+    {:status 404 :headers {} :body "Sorry this page doesn't exist."})
+  
+  (def handlers {:index index-handler
+                 :article article-handler
+                 :not-found not-found-handler})
+  
+  (def my-routes ["/" {"index.html" (:index handlers)
+                       "article.html" (:article handlers)
+                       true :not-found} (:not-found handlers)])  
+  ```
+Note : Make sure to put this route *last* otherwise it will obviously be matched and then return the incorrect 404 which should only be matched when all other patterns come up false.
+
+Now then, as our website grows we'll have more pages, namely articles. To include them is no problem, what we can do is create the `articles/` sub-pattern and then have another map full of the different articles. 
 
   ```Clojure
   (def my-routes ["/" {"index.html :index
