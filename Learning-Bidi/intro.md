@@ -167,10 +167,10 @@ By including a variable like `:id` it makes our URIs much more flexible and as i
 
   ```Clojure  
   (ns example
-    (:require '[ring.util.response :as rr]
-              '[ring.adapter.jetty :as rj]
-              '[bidi.ring :as b]
-              '[clojure.java.jdbc :as j]))
+    (:require [ring.util.response :as rr]
+              [ring.adapter.jetty :as rj]
+              [bidi.ring :as b]
+              [clojure.java.jdbc :as j]))
 
   (def ^:private mysql-db {:dbtype "mysql"
                            :dbname "project-db"
