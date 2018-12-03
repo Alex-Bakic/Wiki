@@ -114,6 +114,29 @@ This is another good example of why reagent is so powerful, as we can seemlessly
 
 The next steps will be add some more features, like local storage and file upload.
 
+Let's look at integrating local storage into the app. It's purpose is to preserve all the ideas we add to the app. That way we can come back and see what we have written. The simplest way to do this is to use the [storage-atom](https://github.com/alandipert/storage-atom) library. It gives us a simple interface for adding and removing things from the store. Here's how we could get it set-up
+
+  ```Clojure
+  ;; add this to your project.clj dependencies
+  [alandipert/storage-atom "2.0.1"]
+  ```
+Now use it in our `core.cljs` file
+
+  ```Clojure
+  (ns sketchy.core
+    (:require [reagent.core :as r]
+              [alandipert.storage-atom :refer [local-storage]]))
+  
+  ;; before
+  (def app-state (r/atom {:ideas []}))
+
+  
+  ;; now
+  (def app-state (local-storage (r/atom {}) :ideas))
+  ```
+
+So `local-storage` takes an atom, still our means of recording state, and it takes and atom and a key that maps to the atom, as we may wish to add more atoms to local storage. When we do `@app-state` , or `reset!`, `swap!` they work the exact same! But this time the local storage is written to as well, as well as the reagent renderings. Now when we close the tab, even shutdown the webserver the data on there will persist! It's a really nice and quick way making projects a bit more usable and convenient.
+
 -------------------------------------------------------------------------------------
 
 Now, what does re-frame bring to the table that Reagent doesn't?
