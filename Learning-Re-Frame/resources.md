@@ -2,6 +2,15 @@
 
 Learning Resources
 
+### Reagent 
+
+1. [Guide to Reagent](https://purelyfunctional.tv/guide/reagent/)
+2. [Introduction to Reagent](https://reagent-project.github.io/index.html)
+3. [Reagent Walkthrough with mailchimp example](https://dhruvp.github.io/2015/02/23/mailchimip-clojure/)
+4. [Reagent TodoMVC](http://todomvc.com/examples/reagent/)
+
+### Re-Frame
+
 1. [Re-Frame Building Blocks](https://purelyfunctional.tv/guide/re-frame-building-blocks/)
 2. [A Visual Structure of Re-Frame](https://purelyfunctional.tv/guide/re-frame-a-visual-explanation/)
 3. [Example App with Exoscale](https://www.exoscale.com/syslog/single-page-application-with-clojurescript-and-reframe/)
