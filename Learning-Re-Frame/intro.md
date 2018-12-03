@@ -70,9 +70,50 @@ So now we have specified our data, we need some functions to operate and manipul
                     i))
 
   ```
+ Now we want to connect our functions to the actual components rendering the db's state. 
  
- Now we want to connect our functions to the actual components rendering the db. 
+  ```Clojure
+  (defn show-idea [i]
+    [:li
+    [:span i]
+    [:button {:on-click #(remove-idea! i)} 
+      "Delete"]])
+  ```
  
+So this is the first component, it is essentially what we want rendered for each idea. The idea itself and a corresponding button to delete it. The key thing would probably be the  `:on-click` map. We can supply a function which then calls the relevant event handler. Now if you were to just call the function directly it will not work, so I assume something is done with the anonymous function before it, but in all honesty I don't know why it can't be called directly :sweat_smile:.
+ 
+Besides from showing existing ideas, we want the ability to add new ones. So let's write up a component that will let us do this :
+
+  ```Clojure
+  (defn new-idea []
+    (let [val (r/atom "")]
+      (fn []
+        [:div
+         [:input {:type "text"
+                  :placeholder "Enter some ideas you have"
+                  :value @val
+                  :on-change #(reset! val (-> % .-target .-value))}]
+         [:button {:on-click #(add-idea! @val)}
+          "Add"]])))
+
+  ```
+The reason that we define an `r/atom` is because our input is going to change. We won't always be typing the exact same idea. Each time we type in a different idea the value of val will change and `:on-change` it will be reset. `reset!` takes the atom and the new value. `(-> % .-target .-value)` is essentially the same as `(.-value (.-target %))` which is how we reference the underlying [javascript properties](https://www.w3schools.com/js/js_object_properties.asp), in this case the `event.target.value` property. We are setting the value of this property to the value `:on-change` got passed so it can be rendered on the dom. 
+
+And lastly, we need a final component to show all the ideas we have added. We will use the first component we defined to be rendered for every idea and we will also incorporate the `new-idea` component so that we have a complete view.
+
+  ```Clojure
+  (defn ideas-list []
+    [:div
+     [:h1 "All of your ideas"]
+     [:ul
+      (for [i (:ideas @app-state)]
+        [show-idea i])]
+     [new-idea]])
+  ```
+This is another good example of why reagent is so powerful, as we can seemlessly, integrate normal clojure macro's and functions into the view **as it is all just data**. The `[new-idea]` snippet is how we can reference other components and combine them together. All in all we have a complete, albeit very minimalistic application. 
+
+The next steps will be add some more features, like local storage and file upload.
+
 -------------------------------------------------------------------------------------
 
 Now, what does re-frame bring to the table that Reagent doesn't?
@@ -92,9 +133,12 @@ Events are vectors. The first being the name of the handler, `:add-idea!` and th
 
 
 
--- to do, 
+#### -- to do, 
 
 -the overall concepts of re-frame
+
 -the parts which comprise a re-frame application
+
 -a look at the very basic todomvc example with walkthrough
+
 -using those parts start build own project showing adaptation
