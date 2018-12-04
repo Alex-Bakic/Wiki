@@ -112,7 +112,7 @@ And lastly, we need a final component to show all the ideas we have added. We wi
   ```
 This is another good example of why reagent is so powerful, as we can seemlessly, integrate normal clojure macro's and functions into the view **as it is all just data**. The `[new-idea]` snippet is how we can reference other components and combine them together. All in all we have a complete, albeit very minimalistic application. 
 
-The next steps will be add some more features, like local storage and file upload.
+The next steps will be to add some features, like local storage.
 
 Let's look at integrating local storage into the app. It's purpose is to preserve all the ideas we add to the app. That way we can come back and see what we have written. The simplest way to do this is to use the [storage-atom](https://github.com/alandipert/storage-atom) library. It gives us a simple interface for adding and removing things from the store. Here's how we could get it set-up
 
