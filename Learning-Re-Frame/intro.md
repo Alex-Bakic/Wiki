@@ -137,26 +137,70 @@ Now use it in our `core.cljs` file
 
 So `local-storage` takes an atom, still our means of recording state, and it takes and atom and a key that maps to the atom, as we may wish to add more atoms to local storage. When we do `@app-state` , or `reset!`, `swap!` they work the exact same! But this time the local storage is written to as well, as well as the reagent renderings. Now when we close the tab, even shutdown the webserver the data on there will persist! It's a really nice and quick way making projects a bit more usable and convenient.
 
--------------------------------------------------------------------------------------
+So I think I'll leave it there for our introduction to Reagent. Of course this isn't much of a tutorial as we've just gone over how to make components, but it's enough to move us on to incorporating it with re-frame. The [Sketchy readme](https://www.github.com/Alex-Bakic/Sketchy/README.md) is the place where I'll cover the mini-project in more detail.
 
-Now, what does re-frame bring to the table that Reagent doesn't?
+------------------------------------------------------------------------------------------------------------------------
 
-Re-frame brings structure.The frontend is all about handling user events. So when a user clicks something, hovers over a nav bar or starts typing, some event is invoked by their action. Events handlers are invoked, and in Reagent we have no way of *structuring* these handlers in any order, or configuration. What re-frame offers us is an **event queue**. So when a user clicks on a "buy button" or whatever this handler can be added to the queue for invokation. How this works is, inside our component , when we describe the `:on-click` or `:on-change` behaviour that is when we can reference the correct re-frame event-handler and add it to the queue via the `re-frame.core/dispatch` function:
+Now then, what does re-frame bring to the table that Reagent doesn't?
+
+Re-frame brings structure.The frontend is all about handling user events. So when a user clicks something, hovers over a nav bar or starts typing, some event is invoked by their action. Like this for example : 
+
+  ```Clojure
+  (defn show-idea [i]
+   [:li
+     [:span i]
+     [:button {:on-click #(remove-idea! i)} 
+       "Delete"]])
+     ;; so we would say that remove-idea! is our event handler.  
+  ```
+
+Events handlers are invoked, but in Reagent we have no way of *structuring* these handlers in any order, or configuration.When a project grows in complexity we will have multiple handlers firing off, for authentication , for communicating with another API or DB. Bigger applications need to be streamlined,  what re-frame offers us is an **event queue**. 
+
+So when a user clicks on "delete" or whatever this handler could be added to the queue for invokation. How this works is, inside our component , when we describe the `:on-click` or `:on-change` behaviour that is when we can reference the correct re-frame event-handler and add it to the queue using the `re-frame.core/dispatch` function:
 
   ```Clojure
   (require '[re-frame.core :as rf])
   
   (defn idea-button [idea]
     [:button
-      {:on-click (fn [e] (.preventDefault e) (rf/dispatch [:add-idea! idea]))} "Add idea"])
+      {:on-click (fn [e] (.preventDefault e) (rf/dispatch [:remove-idea! idea]))} "Delete"])
+      ;; so this is our event handler function. Re-frame dispatches our ideal handler , and it's on the queue
   ```
-The idea with dispatch is that you can focus your component's effort on rendering HTML. It doesn't have to know about the database, how to construct an entry. It should be a view which holds the correct handler which does the work for it.
+Events are vectors. The first being the name of the handler, `:show-idea!` and the remaining elements being any arguments that the handler requires, in this case the idea itself. As we called `dispatch` the handler is then added to the event queue for processing, where they are resolved one at a time. 
 
-Events are vectors. The first being the name of the handler, `:add-idea!` and the remaining elements being any arguments that the handler requires, in this case the idea itself. As we called `dispatch` the handler is then added to the event queue for processing, where they are resolved one at a time. 
+The idea with dispatch is that you can focus your component's effort on rendering HTML. That is very much the ethos of re-frame. To make components as unaware of the procedures as possible. Now this re-frame quite opinionated, it's got it's own methodology of making components simple, but it's certainly worth for the result being decoupled, simpler applications. Components don't have to know about the database, how to construct an entry. **It should be a view which holds the correct handler which does the work for it**.
 
+Here is how we can register an event handler in re-frame
 
+  ```Clojure
+  (rf/reg-event-fx ;; register an event handler
+    :remove-idea
+    (fn [cofx [_ ideas] idea]
+    ;; this is what I was talking about being opinionated. 
+    ;; re-frame passes all event handlers the cofx, or state of 
+    ;; the db. In our case re-frame will be passing round what's
+    ;; in our atom to handlers to manipulate.
+      {
+       :db  (fn [is] (vec (remove #(= % idea) ideas))) idea))    
+        }
+    ))
+  ```
+ -- explain the concept of handlers using maps , and the separation of event handler from event. 
+  
+Our effect would look like this :
 
+  ```Clojure
+  (rf/reg-fx    
+  ;; register an effect
+  :db           
+  ;; the name is the key in the effects map
+  ;; this is what we referenced in our event handler
+  (fn [f ]  
+    .......
+    ))
+  ```
 #### -- to do, 
+
 
 -the overall concepts of re-frame
 
