@@ -161,45 +161,26 @@ So when a user clicks on "delete" or whatever this handler could be added to the
   ```Clojure
   (require '[re-frame.core :as rf])
   
-  (defn idea-button [idea]
-    [:button
-      {:on-click (fn [e] (.preventDefault e) (rf/dispatch [:remove-idea! idea]))} "Delete"])
+  -- use simple project
       ;; so this is our event handler function. Re-frame dispatches our ideal handler , and it's on the queue
   ```
-Events are vectors. The first being the name of the handler, `:show-idea!` and the remaining elements being any arguments that the handler requires, in this case the idea itself. As we called `dispatch` the handler is then added to the event queue for processing, where they are resolved one at a time. 
+Events are vectors. The first being the name of the handler, `:remove-idea!` and the remaining elements being any arguments that the handler requires, in this case the idea itself. As we called `dispatch` the handler is then added to the event queue for processing, where they are resolved one at a time. 
 
 The idea with dispatch is that you can focus your component's effort on rendering HTML. That is very much the ethos of re-frame. To make components as unaware of the procedures as possible. Now this re-frame quite opinionated, it's got it's own methodology of making components simple, but it's certainly worth for the result being decoupled, simpler applications. Components don't have to know about the database, how to construct an entry. **It should be a view which holds the correct handler which does the work for it**.
 
 Here is how we can register an event handler in re-frame
 
   ```Clojure
-  (rf/reg-event-fx ;; register an event handler
-    :remove-idea
-    (fn [cofx [_ ideas] idea]
-    ;; this is what I was talking about being opinionated. 
-    ;; re-frame passes all event handlers the cofx, or state of 
-    ;; the db. In our case re-frame will be passing round what's
-    ;; in our atom to handlers to manipulate.
-      {
-       :db  (fn [is] (vec (remove #(= % idea) ideas))) idea))    
-        }
-    ))
+ 
   ```
- -- explain the concept of handlers using maps , and the separation of event handler from event. 
+Event handlers are meant to be *pure functions* in re-frame. They are fed the db which has whatever contents at that time, and manipulates the contents. The map that is returned is the new state of the db which is then passed to other event handlers. The *effect handler* is what makes that side effect , the change in the application . Re-frame's philosophy is to push the effects into the corner of the application and have their reach minimised. This makes testing the event handlers themselves easier, as you just have to check the data and the components checks are even simpler.
   
 Our effect would look like this :
 
   ```Clojure
-  (rf/reg-fx    
-  ;; register an effect
-  :db           
-  ;; the name is the key in the effects map
-  ;; this is what we referenced in our event handler
-  (fn [f ]  
-    .......
-    ))
+  
   ```
-#### -- to do, 
+
 
 
 -the overall concepts of re-frame
