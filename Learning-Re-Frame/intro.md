@@ -146,47 +146,51 @@ Now then, what does re-frame bring to the table that Reagent doesn't?
 Re-frame brings structure.The frontend is all about handling user events. So when a user clicks something, hovers over a nav bar or starts typing, some event is invoked by their action. Like this for example : 
 
   ```Clojure
-  (defn show-idea [i]
-   [:li
-     [:span i]
-     [:button {:on-click #(remove-idea! i)} 
-       "Delete"]])
-     ;; so we would say that remove-idea! is our event handler.  
+  ;; button to update a counter
+  (defn add-count-btn [i]
+    [:div
+     [:button {:on-click #(update-counter i)} 
+       "increment"]])
+     ;; so we would say that update-counter is our event handler.  
   ```
 
-Events handlers are invoked, but in Reagent we have no way of *structuring* these handlers in any order, or configuration.When a project grows in complexity we will have multiple handlers firing off, for authentication , for communicating with another API or DB. Bigger applications need to be streamlined,  what re-frame offers us is an **event queue**. 
+Now while it is simple to invoke event handlers and for them to work, in Reagent we have no way of *structuring* these handlers in any order or configuration. When a project grows in complexity we will have multiple handlers firing off, for authentication , for communicating with another API or DB. Bigger applications need to be streamlined, one of the things re-frame offers us is an **event queue**. 
 
-So when a user clicks on "delete" or whatever this handler could be added to the queue for invokation. How this works is, inside our component , when we describe the `:on-click` or `:on-change` behaviour that is when we can reference the correct re-frame event-handler and add it to the queue using the `re-frame.core/dispatch` function:
+So when a user clicks on "increment" or whatever this handler could be added to the queue for invokation. How this works is pretty much the same inside our component , when we describe the `:on-click` or `:on-change` behaviour that is where we can reference the re-frame event-handler we want and add it to the queue using the `re-frame.core/dispatch` function:
 
   ```Clojure
   (require '[re-frame.core :as rf])
-  
-  -- use simple project
-      ;; so this is our event handler function. Re-frame dispatches our ideal handler , and it's on the queue
+      
+  (defn add-count-btn []
+    (fn [] 
+      [:div
+        [:button {:on-click #(rf/dispatch [:update-counter])}
+          "Increment Counter"]]))   
   ```
-Events are vectors. The first being the name of the handler, `:remove-idea!` and the remaining elements being any arguments that the handler requires, in this case the idea itself. As we called `dispatch` the handler is then added to the event queue for processing, where they are resolved one at a time. 
+The `dispatch` function expects a vector, with the first element being the name of the event handler itself. The reason we use a keyword will become evident later on, but it seems that we are really just **supplying a key to some sort of map which holds all of our event handlers**. The remaining elements supplied to `dispatch` are any arguments that the handler requires, in this case none so we leave it at that. 
 
-The idea with dispatch is that you can focus your component's effort on rendering HTML. That is very much the ethos of re-frame. To make components as unaware of the procedures as possible. Now this re-frame quite opinionated, it's got it's own methodology of making components simple, but it's certainly worth for the result being decoupled, simpler applications. Components don't have to know about the database, how to construct an entry. **It should be a view which holds the correct handler which does the work for it**.
+As we called `dispatch` the handler is then added to the event queue for processing, where they are resolved one at a time. 
 
-Here is how we can register an event handler in re-frame
+The idea with dispatch is that you can focus your component's effort on rendering HTML. That is very much the ethos of re-frame. To make components as unaware of the procedures as possible. Now this makes re-frame quite opinionated, it's got it's own methodology of making components simple with not much flexibility in it's architecture , but it's certainly worth it for the result being decoupled, straightforward applications. Components don't have to know about the database, how to construct an entry. **It should be a view which holds the correct handler which does the work for it**.
+
+So, this is how we could register the `:update-counter` event handler in re-frame:
 
   ```Clojure
+  (rf/reg-event-fx    ;; register an event handler
+    :update-counter   ;; the keyword will be used as the key to the actual handler
+    (fn [{:keys [db]} [_ _]]  
+      {:db (update db :count inc)}))
  
   ```
-Event handlers are meant to be *pure functions* in re-frame. They are fed the db which has whatever contents at that time, and manipulates the contents. The map that is returned is the new state of the db which is then passed to other event handlers. The *effect handler* is what makes that side effect , the change in the application . Re-frame's philosophy is to push the effects into the corner of the application and have their reach minimised. This makes testing the event handlers themselves easier, as you just have to check the data and the components checks are even simpler.
+The first argument to our handler is the co-effects, or the application state, that re-frame manages for us. This highlights one aspect of re-frame's design, it will pass the application state, as one map , to every event handler which is then able to *return their own map with the updated values*. We need to destructure this though as we are only concerned with referencing our built-in database, and not any other type of co-effect like making ajax calls. 
+ 
+We destructure and grab the `:db` out of the map which is they key to our in-memory db. The second argument is the same vector which `dispatch` was given, but we omit it as we don't need our own name given back to us, nor is there are data in that vector. 
+
+Event handlers are meant to be *pure functions* in re-frame. They are fed the db which has whatever contents at that time, and manipulates the contents. The map that is returned is the new state of the db which is then updated for other event handlers to use.Re-frame's philosophy is to push the effects into the corner of the application and have their reach minimised. This makes testing the event handlers themselves easier, as you just have to check the data and the components checks are even simpler.All we have to do with event handlers is explain what we want our data to look like after we have been dispatched. What we  would like is that our `:count` (they key holding the value of the counter) to be incremented. Re-frame takes care of actually invoking the effect and changing our database. 
+
+Now let's take a look at how we define our app state :
+
+
+
+
   
-Our effect would look like this :
-
-  ```Clojure
-  
-  ```
-
-
-
--the overall concepts of re-frame
-
--the parts which comprise a re-frame application
-
--a look at the very basic todomvc example with walkthrough
-
--using those parts start build own project showing adaptation
