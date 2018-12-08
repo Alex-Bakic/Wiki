@@ -186,11 +186,71 @@ The first argument to our handler is the co-effects, or the application state, t
  
 We destructure and grab the `:db` out of the map which is they key to our in-memory db. The second argument is the same vector which `dispatch` was given, but we omit it as we don't need our own name given back to us, nor is there are data in that vector. 
 
-Event handlers are meant to be *pure functions* in re-frame. They are fed the db which has whatever contents at that time, and manipulates the contents. The map that is returned is the new state of the db which is then updated for other event handlers to use.Re-frame's philosophy is to push the effects into the corner of the application and have their reach minimised. This makes testing the event handlers themselves easier, as you just have to check the data and the components checks are even simpler.All we have to do with event handlers is explain what we want our data to look like after we have been dispatched. What we  would like is that our `:count` (they key holding the value of the counter) to be incremented. Re-frame takes care of actually invoking the effect and changing our database. 
+Event handlers are meant to be *pure functions* in re-frame. They are fed the db which has whatever contents at that time, and manipulates the contents. The map that is returned is the new state of the db which is then updated for other event handlers to use.Re-frame's philosophy is to push the effects into the corner of the application and have their reach minimised. This makes testing the event handlers themselves easier, as you just have to check the data and the components checks are even simpler.All we have to do with event handlers is explain what we want our data to look like after we have been dispatched. What we  would like is that our `:count` (they key holding the value of the counter) to be incremented. Re-frame takes care of getting that map and then making the changes, so we don't have to really get involved with much of the "low level" detail. In fact, updating the `:db` key is such a common operation, that re-frame has a simpler way of registering events that are just for working with the db (hence they are only working with the one co-effect) , which can be registered with the `rf/reg-event-db` function :
 
-Now let's take a look at how we define our app state :
+  ```Clojure
+  ;; using the general registration for all event handlers
+  (rf/reg-event-fx 
+    :update-counter
+    (fn [{:keys [db]} [_ _]]
+      {:db (update db :count inc)}))
 
+  ;; using the specific registration for event handlers working with the db
+  (rf/reg-event-db
+    :update-counter
+    (fn [db [_ _]]
+      (update db :count inc)))
 
+  ;; we are passed the in memory db itself , meaning we can just specify the changes we would like to see
+  ;; and re-frame takes care of the rest.
+  ```
+  
+But how do we define the database and where is it? 
 
+Much like we use the `reg-event-db` to update the database, we can also set default values when our application starts up. We can register an event which will provide our starting point like this:
+
+  ```Clojure
+  (rf/reg-event-db
+    :initialise
+    (fn [_ _]
+      {:count 0}))
+  ```
+
+Now we only need to run this event *once*, when the application is being loaded , as we won't want need , nor want, the state to be wiped our reset as we would specify events that would do this if it needed to be a feature. In our `start` , or `run` function we can invoke it by doing :
+
+  ```Clojure
+  (defn ^:export start []
+    ;; dispatch sync meaning to block all other processes and let this one complete uninterrupted.
+    (rf/dispatch-sync [:initialise])
+    ;; mount our ui into <div id="root"></div>
+    (r/render [ui] (.getElementById js/document "root")))
+
+  ```
+
+So far, our simple counter application is looking like this
+
+  ```Clojure
+  (ns sketchy.core
+  (:require [reagent.core :as r]
+            [re-frame.core :as rf]))
+
+  ;; give the application some state to start off
+  (rf/reg-event-db
+    :initialise
+    (fn [_ _]
+       {:count 0}))
+  
+  ;; the handler which will increment the counter
+  (rf/reg-event-db
+    :update-counter
+    (fn [db [_ _]]
+      (update db :count inc)))
+      
+  (defn ^:export start []
+   (rf/dispatch-sync [:initialise])
+   (r/render [ui] (.getElementById js/document "root")))
+    
+  ```
+Next, we'll define some ui to actually render on screen and look at how we can not only write to the db  with `events` but also read, with `subscriptions`.
 
   
