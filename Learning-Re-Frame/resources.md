@@ -16,8 +16,9 @@ Learning Resources
 3. [Example App with Exoscale](https://www.exoscale.com/syslog/single-page-application-with-clojurescript-and-reframe/)
 4. [Re-Frame todomvc example](https://github.com/Day8/re-frame/tree/master/examples/todomvc)
 5. [The Re-Frame README](https://github.com/Day8/re-frame)
+6. [The Re-Frame Docs](https://github.com/Day8/re-frame/tree/master/docs)
 
 Further Reading
 
-6. [Management and organisation of State in Re-Frame](https://purelyfunctional.tv/guide/state-in-re-frame/)
-7. [Management and organisation of Database(s) in Re-Frame](https://purelyfunctional.tv/guide/database-structure-in-re-frame/)
+7. [Management and organisation of State in Re-Frame](https://purelyfunctional.tv/guide/state-in-re-frame/)
+8. [Management and organisation of Database(s) in Re-Frame](https://purelyfunctional.tv/guide/database-structure-in-re-frame/)
