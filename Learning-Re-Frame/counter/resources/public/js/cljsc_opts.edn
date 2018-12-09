@@ -1,0 +1,1 @@
+{:output-dir "resources/public/js", :output-to "resources/public/js/client.js", :asset-path "js", :optimizations :none, :source-map true, :source-map-timestamp true, :main "counter.core", :preloads [figwheel.connect], :external-config #:figwheel{:config {:on-jsload "counter.core/start", :build-id "client", :websocket-url "ws://localhost:3450/figwheel-ws"}}}
