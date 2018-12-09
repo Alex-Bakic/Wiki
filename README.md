@@ -1,2 +1,2 @@
 # Wiki
-Notes and resources I use for learning new Clojure Libraries, tools and concepts.
+Notes and resources I use for learning new Clojure(Script) Libraries, tools and concepts.
