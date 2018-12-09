@@ -147,9 +147,9 @@ Re-frame brings structure.The frontend is all about handling user events. So whe
 
   ```Clojure
   ;; button to update a counter
-  (defn add-count-btn [i]
+  (defn add-count-btn []
     [:div
-     [:button {:on-click #(update-counter i)} 
+     [:button {:on-click #(update-counter)} 
        "increment"]])
      ;; so we would say that update-counter is our event handler.  
   ```
@@ -251,6 +251,65 @@ So far, our simple counter application is looking like this
    (r/render [ui] (.getElementById js/document "root")))
     
   ```
-Next, we'll define some ui to actually render on screen and look at how we can not only write to the db  with `events` but also read, with `subscriptions`.
+So far we've established a database and the function that handles updating the counter. Next, we'll define some ui to actually render on screen and look at how we can not only write to the db  with `events` but also read, with `subscriptions`.
 
+Subscriptions are links we make to the database that "subscribe" to a particular attribute. When the value of that attribute changes, then re-frame does the job of recalling our subscription to get the updated value. So in our simple counter example, we could have a subscription that monitors the `:count` key in our db :
+
+  ```Clojure
+  (rf/reg-sub        ;; registers a subscription
+    :count           ;; usually named the attribute we are subbed to
+    (fn [db _]       ;; takes the db, we don't need it as it just our own keyword passed back
+      (:count db)))  ;; the value that is checked by re-frame for any changes.
+  ```
+So now we have a nice, decoupled method for the component to access the database, but whenever the value changes due to an event handler, the subscription of to the value is updated, and so is our component. For a component to get the readings of the subscription (to become a subscriber) we use the `rf/subscribe` function.
+
+  ```Clojure
+(defn current-count []
+  ;; Subscribe returns an atom with the state inside, so we need to dereference it.
+  ;; if we dereference it in the let form, instead of in the :span , then we are just 
+  ;; binding the value to counter, which won't change. subscribe doesn't return new values
+  ;; it returns new atoms with the updated state. So if you use subscribe in a let form
+  ;; don't deref it too!
+  (let [counter (rf/subscribe [:count])]
+    (fn []
+      [:div 
+        [:span @counter]])))
+       
+  ;; if you weren't doing any other manipulations, just do
   
+  (defn current-count []
+    (fn []
+      [:div 
+        [:span @(rf/subscribe [:count])]]))
+  ;; it is never bound , so it allows the value in :span to change.
+  ```
+
+Alright, now let's define the next component, which will be the button for the user to increment the counter. When the user clicks the button , we will want re-frame to add the `:update-counter` to the queue, which we can do with `dispatch`. When that handler is executed it will modify the db, meaning our subscription fires off and we should be left with a working application :smiley:
+
+  ```Clojure
+  (defn add-count-btn []
+    (fn [] 
+      [:div
+        ;; :update-counter doesn't take any arguments, so just supply the correct handler
+        [:button {:on-click #(rf/dispatch [:update-counter])}
+          "increment"]]))
+  ```
+Ok, we don't quite have an application. We just need to wrap this all in a component for reagent to render, then we're ready to play around with it.
+
+  ```Clojure
+  
+(defn ui []
+   (fn [] 
+     [:div
+       [current-count]
+       [add-count-btn]]))
+
+;; make sure you have the start function specified in your project.clj , boot.clj file etc.
+(defn ^:export start []
+  ;; run the function which sets up the db state when the app is being ran
+  (rf/dispatch-sync [:initialise])
+  ;; render our components onto the div with id "root"
+  (r/render [ui] (.getElementById js/document "root")))
+  
+  ```
+ -- to do, specify counter project... 
