@@ -312,4 +312,6 @@ Ok, we don't quite have an application. We just need to wrap this all in a compo
   (r/render [ui] (.getElementById js/document "root")))
   
   ```
- -- to do, specify counter project... 
+All this code , and the prerequisites to run it , can be found in the `counter` folder. To try it and out and meddle with it you'll need to clone this wiki and then `cd` into the `counter` directory and run `lein do clean, figwheel` which should then pop up an address for you to visit. 
+
+The next chapter of this section is going to focus back on my `Sketchy` mini project, which will be a bit more complex and act as a better spokesperson for using re-frame. You probably wouldn't need all this just for a counter and some text, but it is good as an introduction to it's philosophy and structure. Now it's time for the next chapter!
