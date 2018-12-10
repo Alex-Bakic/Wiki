@@ -258,7 +258,7 @@ Subscriptions are links we make to the database that "subscribe" to a particular
   ```Clojure
   (rf/reg-sub        ;; registers a subscription
     :count           ;; usually named the attribute we are subbed to
-    (fn [db _]       ;; takes the db, we don't need it as it just our own keyword passed back
+    (fn [db _]       ;; takes the db, we don't need the second arg as it is just our own keyword passed back
       (:count db)))  ;; the value that is checked by re-frame for any changes.
   ```
 So now we have a nice, decoupled method for the component to access the database, but whenever the value changes due to an event handler, the subscription of to the value is updated, and so is our component. For a component to get the readings of the subscription (to become a subscriber) we use the `rf/subscribe` function.
@@ -312,6 +312,6 @@ Ok, we don't quite have an application. We just need to wrap this all in a compo
   (r/render [ui] (.getElementById js/document "root")))
   
   ```
-All this code , and the prerequisites to run it , can be found in the `counter` folder. To try it and out and meddle with it you'll need to clone this wiki and then `cd` into the `counter` directory and run `lein do clean, figwheel` which should then pop up an address for you to visit. 
+All this code , and the prerequisites to run it , can be found in the `counter` folder. To try it out and meddle with it you'll need to clone this wiki and then `cd` into the `counter` directory and run `lein do clean, figwheel` which should then pop up an address for you to visit. 
 
 The next chapter of this section is going to focus back on my `Sketchy` mini project, which will be a bit more complex and act as a better spokesperson for using re-frame. You probably wouldn't need all this just for a counter and some text, but it is good as an introduction to it's philosophy and structure. Now it's time for the next chapter!
