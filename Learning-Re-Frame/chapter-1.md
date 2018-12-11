@@ -8,7 +8,7 @@ Let's not waste a minute! The first thing we need to do is define our applicatio
               [re-frame.core :as rf]))
   
   ;; remember we are making the "db" so we can ignore the first argument, 
-  ;; nor do we expect any arguments so we can leave that out as well.
+  ;; nor are we using the argument vector so we can leave that out as well.
   (rf/reg-event-db
     :initialise
     (fn [_ _]
@@ -42,10 +42,10 @@ So we can use this function with `update-in` to remove the given idea:
     (fn [db [_ idea]]
       (update-in db [:ideas] remove-idea idea)))
   ```
-Alright , now I'll specify all the different database attributes the components can watch. Which is just the one at the moment :sweat_smile:.
+Onward to the subscriptions. Now I'll specify all the different database attributes the components can watch. Which is just the one at the moment :sweat_smile:.
 
   ```Clojure
-  ;; monitors the ideas array, for any insertions or deletions
+  ;; monitors the ideas vector, for any insertions or deletions
   (rf/reg-sub
     :ideas
     (fn [db _]
@@ -53,9 +53,9 @@ Alright , now I'll specify all the different database attributes the components 
   ```
 We're just going to watch the array , for now there is no need to return a given element but we might separate the data by category, rating or something. 
 
-So , to recap. We've defined all the data , the operations on the data (the writes) and the requests for data (subscriptions). All that's left really is to define some views to use all this stuff...
+So , to recap. We've defined the structure of our data , the operations on the data (the event handlers) and the requests for data (subscriptions). All that's left really is to define some views to use all this stuff...
   
-The first thing we need to be able to do is add ideas to the db. A common technique used for input boxes is to define an atom , which initially just has `""` as the value, but `:on-change` it is updated. So that when they're ready to add the idea it is all there. Of course then we also need to describe a button, which when clicked on should dispatch the `:add-idea` event handler.
+The first thing we need to be able to do is add ideas to the db. A common technique used for input boxes is to define a reagent atom , which initially just has `""` as the value, but `:on-change` it is updated. So that when they're ready to add the idea it is all there. Of course we also need to describe a button, which when clicked on should dispatch the `:add-idea` event handler.
 
   ```Clojure
   (defn new-idea []
@@ -74,17 +74,17 @@ The first thing we need to be able to do is add ideas to the db. A common techni
           "Add"]])))
   ```
   
-Ok now we need the ability to actually see what we've added, so I'll define the `show-idea` component to specify each idea , and next to them have a delete button so the user can remove it. It simpler for us to extract out this functionality, so that each idea could be styled , moved or even the button itself removed. It's nicer than just looping through all the ideas and putting each one in this layout. 
+Ok now we need the ability to actually see what we've added, so I'll define the `show-idea` component to specify each idea , and next to them have a delete button so the user can remove it. It's simpler to extract this functionality, so that each idea could be styled , re-designed or even the button itself removed. It's nicer than just looping through all the ideas and putting each one in this layout as it's harder to test.
  
   ```Clojure
   (defn show-idea [i]
     [:p
      [:span i]
-     [:button  {:class "btn btn default" :on-click #(rf/dispatch [:remove-idea i])} 
+     [:button  {:on-click #(rf/dispatch [:remove-idea i])} 
       "Delete"]])
   ```
   
-With this functionality `for` every idea, we'll call this function and pass it the idea.
+With this functionality, `for` every idea we'll call this function and pass it the idea.
 
   ```Clojure
    [:ul
@@ -111,5 +111,67 @@ This is what's great about using re-frame, and clojure for that matter. It's all
     (rf/dispatch-sync [:initialise])
     ;; make sure we are subscribed to keep up to date with all the ideas.
     (r/render [ui (rf/subscribe [:ideas])] (.getElementById js/document "root")))
+  ```
+Whilst there is anything *technically* wrong with this, and it will allow you to add and remove data it isn't very efficient. This is because , in the `start` function, the *entire* ui is subscribing to `:ideas`, meaning for every change there has to be a complete re-rendering. 
+
+What makes re-frame so good is that we can make things so efficient, so easily. Just by breaking up components into the smallest possible bits, they can subscribe to data and only those bits change when they have to. In this case the functionality which needs the db is our little `for` macro code for generating all the ideas. If we just move this out,
+
+  ```Clojure
+  (defn show-all-ideas []
+    (let [db (rf/subscribe [:ideas])]
+      [:ul
+        (for [i @db] [show-idea i])])) 
+  ```
+  
+ Now we just reference this component in the ui and this is much more efficient. However, we now seem to get this error:
+ 
+ ```Warning: Every element in a seq should have a unique :key```
+ 
+Now this error comes from Reagent, when rendering, as it is concerned that we are generating code which have "identical" keys. What this means is as the list of items grows in size, it makes it difficult for the underlying system to optimise the rendering. The solution to this is to wrap it all in a `:div`, or `(into [:div] (for [i @db] ...))` which also works as the item are wrapper in a unique divider. It's not uncommon to see this as well though, for dynamically generated children nodes:
+
+  ```Clojure
+  (defn show-all-ideas []
+    (let [db (rf/subscribe [:ideas])]
+    [:ul
+     (for [i @db]
+       ^{:key i} [show-idea i])])) ;; this will make sure that there is a map containing a unique pair for every element
+  ```
+  
+ Now then, with those switches, our `ui` looks like this:
+ 
+  ```Clojure
+  (defn new-idea []
+    (let [val (r/atom "")]
+      (fn []
+        [:div#new-idea
+         [:input {:type "text"
+                  :placeholder "Enter some ideas you have"
+                  :value @val
+                  :on-change #(reset! val (-> % .-target .-value))}]
+         [:button {:class "btn btn-default" 
+                   :on-click #(rf/dispatch [:add-idea @val])}
+          "Add"]])))
+
+  (defn show-idea [i]
+    [:p
+     [:span i]
+     [:button  {:class "btn btn default" :on-click #(rf/dispatch [:remove-idea i])} 
+      "Delete"]])
+
+  (defn show-all-ideas []
+    (let [db (rf/subscribe [:ideas])]
+      [:ul
+        (into [:div#ideas-list] (for [i @db] [show-idea i]))]))
+
+  (defn ui []
+    [:div#ui
+        [new-idea]
+        [:h3 "All your ideas"]
+        [show-all-ideas]]) 
+
+  (defn ^:export start []
+    (rf/dispatch-sync [:initialise])
+    (r/render [ui] (.getElementById js/document "root")))
+
 
   ```
