@@ -172,6 +172,25 @@ Now this error comes from Reagent, when rendering, as it is concerned that we ar
   (defn ^:export start []
     (rf/dispatch-sync [:initialise])
     (r/render [ui] (.getElementById js/document "root")))
+  ```
+This apps about to get a whole lot more interesting. But to accomodate the complexity, we're going to have this core file up. Due to the fact we're going to be adding a few more handlers, more components which will completely convolute our core file. What we can do is put all the ui elements into a `components` folder, the event-handlers into an `events` file, the database in another etc. 
 
+So, doing a before and after on the project structure:
 
+  ```Clojure
+  -- to do , show differences. Then show core-file
+  ```
+
+So we've got a working app, but before I add in the local-storage capability, I'm going to change the core format of our current database. See, I'll want to add a map that holds the comments of each idea, and a key that holds the corresponding file which would be the script of the idea, which a user can upload.
+
+Essentially going from this, 
+
+  ```Clojure
+  {:ideas ["the idea the user added"]}
+  ```
+  
+to this
+
+  ```Clojure
+  {:ideas {"*the idea the user added*" {:comments ["good" "ehh"] :file *the script*}}}
   ```
