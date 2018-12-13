@@ -173,24 +173,69 @@ Now this error comes from Reagent, when rendering, as it is concerned that we ar
     (rf/dispatch-sync [:initialise])
     (r/render [ui] (.getElementById js/document "root")))
   ```
-This apps about to get a whole lot more interesting. But to accomodate the complexity, we're going to have this core file up. Due to the fact we're going to be adding a few more handlers, more components which will completely convolute our core file. What we can do is put all the ui elements into a `components` folder, the event-handlers into an `events` file, the database in another etc. 
+This app's about to get a lot more interesting. But to accomodate the complexity, we're going to have to split this core file up. Due to the fact we're going to be adding more handlers, more components which will completely convolute our core file. What we can do is put all the ui elements into a `components` folder, the event-handlers into an `events` file, the subscriptions in another etc. 
 
 So, doing a before and after on the project structure:
 
   ```Clojure
-  -- to do , show differences. Then show core-file
-  ```
-
-So we've got a working app, but before I add in the local-storage capability, I'm going to change the core format of our current database. See, I'll want to add a map that holds the comments of each idea, and a key that holds the corresponding file which would be the script of the idea, which a user can upload.
-
-Essentially going from this, 
-
-  ```Clojure
-  {:ideas ["the idea the user added"]}
-  ```
+  ;; before
+  | -- src/
+       | -- sketchy/
+            | -- core.cljs ;; which houses everything
   
-to this
+  ;; after
+  | -- src/
+       | -- sketchy/
+            | -- core.cljs ;; only houses the one ui element, and the start fn now
+            | -- components/ ;; stores all the app's views
+                 | -- add_idea.cljs ;; remember the underscore instead of the dash...
+                 | -- show_ideas.cljs 
+            | -- subs.cljs ;; where all the subscriptions can be found
+            | -- events.cljs ;; where all the event handlers can be found
+  ```
+
+If we take a peek into the `components` folder, specifically the `add_idea.cljs` file you'll see:
 
   ```Clojure
-  {:ideas {"*the idea the user added*" {:comments ["good" "ehh"] :file *the script*}}}
+  (ns sketchy.components.add-idea
+    (:require [reagent.core :as r]
+              [re-frame.core :as rf]))
+
+  (defn new-idea []
+    (let [val (r/atom "")]
+      (fn []
+        [:div#new-idea
+         [:input {:type "text"
+                  :placeholder "Enter some ideas you have"
+                  :value @val
+                  :on-change #(reset! val (-> % .-target .-value))}]
+         [:button {:class "btn btn-default" 
+                   :on-click #(rf/dispatch [:add-idea @val])}
+          "Add"]])))
   ```
+
+We don't actually have to specify the event-handlers from the `events.cljs` file, this is because **it is all registered on re-frame** , it knows where everything is and where things are being dispatched from. It pulls together all the different elements of our application together, and we don't have to specify in every file that we are requiring the event or subscription we are making reference to. The only place we need to require everything is in the core file. That is the central point of our app, where all the parts come together, the individual parts points don't need to worry apart from anything but their own definitions.
+
+Speaking of the `core.cljs` file, it now looks like this:
+
+  ```Clojure
+  (ns sketchy.core
+    (:require [reagent.core :as r]
+              [re-frame.core :as rf]
+              [sketchy.components.add-idea :as ai]
+              [sketchy.components.show-ideas :as si]
+              [sketchy.events :as e]
+              [sketchy.subs :as s]))
+
+  (defn ui []
+    [:div#ui
+        [ai/new-idea]
+        [:h3 "All your ideas"]
+        [si/show-all-ideas]]) 
+
+  (defn ^:export start []
+    (rf/dispatch-sync [:initialise])
+    (r/render [ui] (.getElementById js/document "root")))
+  ```
+
+Remember, everything covered here and more is the in the [Sketchy](https://github.com/Alex-Bakic/Sketchy/blob/master/src/sketchy/core.cljs) directory.In the next chapter, we're going to be looking at adding local-storage capability, to make this application a bit more practical.
