@@ -214,7 +214,7 @@ If we take a peek into the `components` folder, specifically the `add_idea.cljs`
           "Add"]])))
   ```
 
-We don't actually have to specify the event-handlers from the `events.cljs` file, this is because **it is all registered on re-frame** , it knows where everything is and where things are being dispatched from. It pulls together all the different elements of our application together, and we don't have to specify in every file that we are requiring the event or subscription we are making reference to. The only place we need to require everything is in the core file. That is the central point of our app, where all the parts come together, the individual parts points don't need to worry apart from anything but their own definitions.
+We don't actually have to specify the event-handlers from the `events.cljs` file, this is because **it is all registered on re-frame** , it knows where everything is and where things are being dispatched from. It pulls together all the different elements of our application together, and we don't have to specify in every file that we are requiring the event or subscription we are making reference to. *The only place we need to require everything is in the core file*. That is the central point of our app, where all the parts come together, the individual parts points don't need to worry about anything but their own definitions.
 
 Speaking of the `core.cljs` file, it now looks like this:
 
