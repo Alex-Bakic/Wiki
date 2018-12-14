@@ -62,4 +62,68 @@ And once again using `swap!` to update the atom.
       (swap! db remove-idea idea)))
   ```
 
-Now onto the new and exciting stuff, the handlers which we have no ground to work off of, so to start I'll define a helper function for adding comments into the appropriate map:
+Now let's see if the following works. Running `lein figwheel` from the inside the `Sketchy` directory, we sadly get the following stream of errors:
+
+  ```
+  - Error rendering component (in sketchy.core.ui >  > sketchy.components.show_ideas.show_all_ideas)
+  - The above error occurred in the <sketchy.components.show_ideas.show_all_ideas> component:
+  - Error: No protocol method IDeref.-deref defined for type cljs.core/PersistentVector: [{:idea "does this work?", :comments [], :keywords []}]
+  ```
+So what gives? Essentially it's saying our `show-ideas` component is dereferencing a vector , meaning it expected an atom. Looking inside the view it contains:
+
+  ```Clojure
+(defn show-all-ideas []
+ (let [db (rf/subscribe [:ideas])] 
+   [:ul (into [:div#ideas-list] 
+              (for [i @db] (show-idea i)))]))
+  ```
+Now there's nothing wrong with *this*, `subscribe` does return an atom, a reagent atom, that allows changes to the view to be made when changes to the data are made. When we dereference the subscribe atom, we are expecting to have a vector of ideas we can work with. So it must be an issue with the subscription itself. Looking at our database and subscription:
+
+  ```Clojure
+  (def db (local-storage (atom []) :db))
+
+  (rf/reg-event-db
+    :initialise
+    (fn [_ _]
+      db))
+
+  ;; sub , grabs the :idea out of every map.
+    (rf/reg-sub
+    :ideas
+    (fn [db _]
+      (mapv :idea @db)))
+  ```
+Now, it shows the `:ideas` subscription expects an atom, which would make sense as that is what our state is defined to be. But when does the subscription change? When the db is altered by the affect of an event handler. Moreover, we can deduce the event handler is the culprit! Inside our `add-idea` handler, when we `swap!` we *did not return an atom, but the vector, showing the state changes*. So when we dereference the vector it brings up our error. Now, you might try and hack a solution together by wrapping `(atom (swap! ...))` on every event handler, but we know that when we start doing that there is a mistake in our architecture. In fact, re-frame is aware of this danger and has a tool we can use to keep our event handlers clean, welcome to the stage **Interceptors**.
+
+A nice analogy for interceptors , for anyone who has watched tennis , would be Rafael Nadal. Now for anyone unfamiliar with the sport , Nadal is one of the best in the world. It's what **he does before and after each round** that makes him quite unique. Before serving , every time without fail ,  he will straighten his shirt , curl hair behind one ear then wipe the side of his nose and curl hair behind the other before serving. And after most rounds he will request a towel.
+
+Now imagine that one round is like one of our event handlers working hard at a particular task, our interceptors are the setups which occur **before** the event handler was called and **after** the event handler has finished work. 
+
+So in our case, we might use an interceptor before one of our event handlers run , to grab everything out of the local-storage and feed it into the event handler to either add to , or remove an element. Then we could have an interceptor, after the event handler is done and take the return value and put it into local-storage. 
+
+That's the plan. Now , as interceptors work closely with the db it's nicer to specify all that stuff in a separate file called `db.cljs` which will make things a bit clearer. 
+
+Currently, it looks like this:
+
+  ```Clojure
+  (ns sketchy.db 
+    (:require [re-frame.core :as rf]))
+
+  ;; app state
+  ;; each entry in the vector will be a map of the form:
+  ;; {:idea "something..." :comments [] :rating 0}
+  (def db (atom []))
+
+  (rf/reg-event-db
+    :initialise
+    (fn [_ _]
+      db))
+  ```
+  
+Ok and the moment I'm sure you've been waiting for. How do we actually define interceptors and how do we use them?
+
+Now interceptors define reusable functionality that event handlers may need before or after execution. They can be thought of another layer in our re-frame pipeline, but they are here for good reason. For making problems like ours, and many others , much simpler. There's a great tutorial [on interceptors](https://purelyfunctional.tv/guide/re-frame-building-blocks/#interceptors) , which helped me to get to grips with this concept.
+
+Now, we need to specify the behaviour of an interceptor to add things to the local-store after an idea has been added.
+
+  
