@@ -122,8 +122,14 @@ Currently, it looks like this:
   
 Ok and the moment I'm sure you've been waiting for. How do we actually define interceptors and how do we use them?
 
-Now interceptors define reusable functionality that event handlers may need before or after execution. They can be thought of another layer in our re-frame pipeline, but they are here for good reason. For making problems like ours, and many others , much simpler. There's a great tutorial [on interceptors](https://purelyfunctional.tv/guide/re-frame-building-blocks/#interceptors) , which helped me to get to grips with this concept.
+Now interceptors define reusable functionality that event handlers may need before or after execution. They can be thought of as another layer in our re-frame pipeline, but they are here for good reason. For making problems like ours, and many others , much simpler. There's a great tutorial [on interceptors](https://purelyfunctional.tv/guide/re-frame-building-blocks/#interceptors) , which helped me to get to grips with this concept.
 
 Now, we need to specify the behaviour of an interceptor to add things to the local-store after an idea has been added.
 
+We want an interceptor to wrap around our `:initialise` event handler, and pull the values from local-store *before* and hand the map to the handler before it returns just an empty collection. Events like `add-idea` or `remove-idea` should now be working just with vectors and maps unaware that the concept of local-storage exists. For each of these handlers we need an interceptor that runs *after* each handler is run and adds the return value into the local-store. 
+
+Keep in mind it does not redirect the return value to the interceptor, it just makes use of the value to invoke some side-effects. This way our application works with native data structures the whole way through and we can keep our handlers simple. So , let's start from the `db.cljs` again and redefine our app state...
+
+  ```Clojure
   
+  ```
