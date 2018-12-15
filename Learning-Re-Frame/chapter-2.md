@@ -131,5 +131,90 @@ We want an interceptor to wrap around our `:initialise` event handler, and pull 
 Keep in mind it does not redirect the return value to the interceptor, it just makes use of the value to invoke some side-effects. This way our application works with native data structures the whole way through and we can keep our handlers simple. So , let's start from the `db.cljs` again and redefine our app state...
 
   ```Clojure
+  (ns sketchy.db 
+    (:require [re-frame.core :as rf]
+              [alandipert.storage-atom :refer [local-storage]]))
   
+  ;;specifying the local-storage
+  (def db (local-storage (atom []) :db))
+
+  ;; now we need to specify the functionality which the interceptor will use to 
+  ;; add items to local-storage
+  (defn ideas->storage
+    [ideas]
+    (swap! db conj ideas))
+  ;; interceptor will call this after our add-idea event handler has run
+  
+  ;; functionality for removing ideas out of storage
+  ;; I know it's identical to the handler's behaviour but stick with me.
+  (defn f
+    [is i]
+    (filterv (complement #(= i (:idea %))) is))
+
+  (defn storage->trash
+    [idea]
+    (swap! db f idea))
   ```
+
+Now we've specified the code that we want to run after our handlers do there work, but what about before? What re-frame wants us to do is register an `effect handler` which will inject the effects, the state from local-storage, into the argument list of an event handler of our choosing. Now we only want to inject the local-storage state into the `:initialise` event handler as we want to state off each application session with any data from the last. So initialise would return a vector and the handlers can work with that. So let's inject the local-store data into our handler:
+
+  ```Clojure
+  ;; register a coeffect handler
+  (rf/reg-cofx
+  :local-store-ideas
+  (fn [cofx _]
+    ;; put all the ideas into the cofx map under the key
+    ;; :local-store-ideas
+    (assoc cofx :local-store-ideas @db))) 
+  ```
+
+So cofx is the first argument that is passed to every map, we are going to be adding the `:local-store-ideas` key to those affects. So now, in our `events.cljs` file when we specify the `:initialise` we are going to inject the data from that key into the first argument of the map. 
+
+  ```Clojure
+  ;; in our events.cljs file
+  
+  ;; before
+  (rf/reg-event-db
+  :initialise
+  (fn [_ _]
+    {:ideas []}))
+  
+  ;; after
+  (rf/reg-event-fx
+  :initialise
+
+  ;; injecting the local-storage , put into the :cofx arg
+  ;; this is the vector where all the interceptors go
+  [(rf/inject-cofx :local-store-ideas)]
+  ;; adds the key and data to the first argument
+  ;; which we can destructure out
+  (fn [{:keys [db local-store-ideas]} _]
+    {:db local-store-ideas}))
+  ```
+  
+The next step is to define some interceptors for the `:add-idea` and `remove-idea` handlers so that we retain the shape of the data that return. 
+
+  ```Clojure
+  ;; for the add-idea
+  ;; after specifies that we want to do this after our event handler is run
+  (def ->local-storage (rf/after d/ideas->storage))
+  
+  ;; for the remove idea
+  (def ->trash (rf/after d/storage->trash))
+
+  ;; so now we not only to the in-memory db , but we add to storage
+  (rf/reg-event-db
+  :add-idea
+  [->local-storage]
+  (fn [db [_ idea]]
+    (conj db {:idea (any-idea? idea) :comments [] :keywords []})))
+
+  ;; so now we not only remove from the in-memory db , we remove from storage
+  (rf/reg-event-db
+  :remove-idea
+  [->trash]
+  (fn [db [_ idea]]
+    (remove-idea db idea)))
+  ```
+ 
+And there we go, that should it right? 
