@@ -95,11 +95,11 @@ Now there's nothing wrong with *this*, `subscribe` does return an atom, a reagen
   ```
 Now, it shows the `:ideas` subscription expects an atom, which would make sense as that is what our state is defined to be. But when does the subscription change? When the db is altered by the affect of an event handler. Moreover, we can deduce the event handler is the culprit! Inside our `add-idea` handler, when we `swap!` we *did not return an atom, but the vector, showing the state changes*. So when we dereference the vector it brings up our error. Now, you might try and hack a solution together by wrapping `(atom (swap! ...))` on every event handler, but we know that when we start doing that there is a mistake in our architecture. In fact, re-frame is aware of this danger and has a tool we can use to keep our event handlers clean, welcome to the stage **Interceptors**.
 
-A nice analogy for interceptors , for anyone who has watched tennis , would be Rafael Nadal. Now for anyone unfamiliar with the sport , Nadal is one of the best in the world. It's what **he does before and after each round** that makes him quite unique. Before serving , every time without fail ,  he will straighten his shirt , curl hair behind one ear then wipe the side of his nose and curl hair behind the other before serving. And after most rounds he will request a towel.
+One way of understanding the raison d'etre of interceptors is to look at a factory's innerworkings. One machine will expect a product fed to it every second or so, to package into a box and seal it. Now the company may decide to change the design , or the logo that's going to be stamped on the box. But this shouldn't concern the machine one bit. It should be focused on packaging , and someone else can style it however they like after it's done. 
 
-Now imagine that one round is like one of our event handlers working hard at a particular task, our interceptors are the setups which occur **before** the event handler was called and **after** the event handler has finished work. 
+Now imagine that one machine is like on of our event handlers, working hard at a particular task. Our interceptors are the procedures that happen before or after we start the work to simplify the problem of doing the task itself. They help setup event handlers before they run, or after they've run and use the data they output.
 
-So in our case, we might use an interceptor before one of our event handlers run , to grab everything out of the local-storage and feed it into the event handler to either add to , or remove an element. Then we could have an interceptor, after the event handler is done and take the return value and put it into local-storage. 
+So in our case, we might use an interceptor before one of our event handlers run , to grab everything out of the local-storage and feed it into our `:initialise` event handler. To pick up where last session left off. Then we could have an interceptor, after the event handler is done and take the return value and put it into local-storage. Events like `add-idea` or `remove-idea` should now be working just with vectors and maps unaware that the concept of local-storage exists. For each of these handlers we need an interceptor that runs *after* each handler is run and adds the return value into the local-store. 
 
 That's the plan. Now , as interceptors work closely with the db it's nicer to specify all that stuff in a separate file called `db.cljs` which will make things a bit clearer. 
 
@@ -119,54 +119,37 @@ Currently, it looks like this:
     (fn [_ _]
       db))
   ```
-  
-Ok and the moment I'm sure you've been waiting for. How do we actually define interceptors and how do we use them?
 
-Now interceptors define reusable functionality that event handlers may need before or after execution. They can be thought of as another layer in our re-frame pipeline, but they are here for good reason. For making problems like ours, and many others , much simpler. There's a great tutorial [on interceptors](https://purelyfunctional.tv/guide/re-frame-building-blocks/#interceptors) , which helped me to get to grips with this concept.
-
-Now, we need to specify the behaviour of an interceptor to add things to the local-store after an idea has been added.
-
-We want an interceptor to wrap around our `:initialise` event handler, and pull the values from local-store *before* and hand the map to the handler before it returns just an empty collection. Events like `add-idea` or `remove-idea` should now be working just with vectors and maps unaware that the concept of local-storage exists. For each of these handlers we need an interceptor that runs *after* each handler is run and adds the return value into the local-store. 
-
-Keep in mind it does not redirect the return value to the interceptor, it just makes use of the value to invoke some side-effects. This way our application works with native data structures the whole way through and we can keep our handlers simple. So , let's start from the `db.cljs` again and redefine our app state...
+Now you can use an [external library](https://github.com/alandipert/storage-atom) for this, but the number of interceptors we will define aren't many and it's quite straightforward anyway to just reference `js/localStorage`.
 
   ```Clojure
-  (ns sketchy.db 
-    (:require [re-frame.core :as rf]
-              [alandipert.storage-atom :refer [local-storage]]))
-  
-  ;;specifying the local-storage
-  (def db (local-storage (atom []) :db))
+  (def ls-key "db")                 
+  ;; localstore key
 
-  ;; now we need to specify the functionality which the interceptor will use to 
-  ;; add items to local-storage
   (defn ideas->storage
     [ideas]
-    (swap! db conj ideas))
-  ;; interceptor will call this after our add-idea event handler has run
+    (.setItem js/localStorage ls-key (str ideas))) 
+    ;; this is the functionality that the "after" interceptor will use to take the return value of a handler
+    ;; and update the local-storage with that data.
+
+  ```
+Now we've specified the code that we want to run before/after our handlers do there work, but what about before? What re-frame wants us to do is register an `effect handler` which will inject the effects, the state from local-storage, into the argument list of an event handler of our choosing. Now we only want to inject the local-storage state into the `:initialise` event handler as we want to state off each application session with any data from the last. 
   
-  ;; functionality for removing ideas out of storage
-  ;; I know it's identical to the handler's behaviour but stick with me.
-  (defn f
-    [is i]
-    (filterv (complement #(= i (:idea %))) is))
-
-  (defn storage->trash
-    [idea]
-    (swap! db f idea))
   ```
-
-Now we've specified the code that we want to run after our handlers do there work, but what about before? What re-frame wants us to do is register an `effect handler` which will inject the effects, the state from local-storage, into the argument list of an event handler of our choosing. Now we only want to inject the local-storage state into the `:initialise` event handler as we want to state off each application session with any data from the last. So initialise would return a vector and the handlers can work with that. So let's inject the local-store data into our handler:
-
-  ```Clojure
-  ;; register a coeffect handler
   (rf/reg-cofx
-  :local-store-ideas
-  (fn [cofx _]
-    ;; put all the ideas into the cofx map under the key
-    ;; :local-store-ideas
-    (assoc cofx :local-store-ideas @db))) 
+    :local-store-ideas
+    (fn [cofx _]
+        ;; put the localstore todos into the coeffect 
+        ;; under :local-store-todos
+        (assoc cofx :local-store-ideas
+               ;; read in todos from localstore
+               ;; and process into a sorted map
+               (into []
+                     (some->> (.getItem js/localStorage ls-key)
+                              (cljs.reader/read-string))))))
+  ;; this is the coeffect handler that will be used before "initalise" is ran to update it.
   ```
+A subtle intricacy of the `cofx` we registered is the `(into [] ...)` bit. Because what we are getting out of there *is* the vector that other handlers have tweaked and modified. We're not reading every map one by one into a vector, we are just evaluating the one vector which holds all the maps in there. So you'd think we'd end up with a collection like `[[{:idea "..."}]]` but in fact `into` is smart enough to just return the vector itself which means our handlers can work like normal. Also if there is nothing in local-storage, then into will return the empty vector.
 
 So cofx is the first argument that is passed to every map, we are going to be adding the `:local-store-ideas` key to those affects. So now, in our `events.cljs` file when we specify the `:initialise` we are going to inject the data from that key into the first argument of the map. 
 
@@ -197,24 +180,21 @@ The next step is to define some interceptors for the `:add-idea` and `remove-ide
   ```Clojure
   ;; for the add-idea
   ;; after specifies that we want to do this after our event handler is run
-  (def ->local-storage (rf/after d/ideas->storage))
+  (def ->storage (rf/after d/ideas->storage))
   
-  ;; for the remove idea
-  (def ->trash (rf/after d/storage->trash))
-
   ;; so now we not only to the in-memory db , but we add to storage
   (rf/reg-event-db
   :add-idea
-  [->local-storage]
+  [->storage]
   (fn [db [_ idea]]
     (conj db {:idea (any-idea? idea) :comments [] :keywords []})))
 
-  ;; so now we not only remove from the in-memory db , we remove from storage
+  ;; setItem can be used to show that items are being removed too, so we don't need to
+  ;; write a separate handler for remove.
   (rf/reg-event-db
   :remove-idea
-  [->trash]
+  [->storage]
   (fn [db [_ idea]]
     (remove-idea db idea)))
   ```
- 
-And there we go, that should it right? 
+We can see that a vector is used, before the event handler functionality is run , which holds all the interceptors that need to be run. It is up to the job of the interceptor , using the `before` or `after` functions to say at what point in the pipeline they need to be ran. In this case we've only got the one but it is very important , one that will be used on pretty much every handler we will define.
