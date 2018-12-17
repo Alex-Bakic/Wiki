@@ -120,7 +120,7 @@ Currently, it looks like this:
       db))
   ```
 
-Now you can use an [external library](https://github.com/alandipert/storage-atom) for this, but the number of interceptors we will define aren't many and it's quite straightforward anyway to just reference `js/localStorage`.
+Now I'm going to make a shift away from the [external library](https://github.com/alandipert/storage-atom) for the local storage, because the number of interceptors we will define aren't many and it is quite straightforward to just make a reference to `js/localStorage`. There are only two functions which we will need to implement , a wrapper around `.getItem` and a wrapper around `setItem` for storing ideas.
 
   ```Clojure
   (def ls-key "db")                 
@@ -198,3 +198,5 @@ The next step is to define some interceptors for the `:add-idea` and `remove-ide
     (remove-idea db idea)))
   ```
 We can see that a vector is used, before the event handler functionality is run , which holds all the interceptors that need to be run. It is up to the job of the interceptor , using the `before` or `after` functions to say at what point in the pipeline they need to be ran. In this case we've only got the one but it is very important , one that will be used on pretty much every handler we will define.
+
+To conclude this chapter, we've simplified our local-storage database to just the two wrapper functions, we've implemented an interceptor to help us with the task of persisting our data. Now our event handlers can once again be simple and focus just on the data, which will come in very handy in the next chapter where we will add some more event handlers for events and keywords and subsequently their view functions. 
