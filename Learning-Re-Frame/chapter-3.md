@@ -53,5 +53,31 @@ So that's pretty much it for the subs, they are pretty dynamic so I don't need t
 
 Because of the db structure I opted for, it isn't as straightforward as one would like to just find the correct map and insert the new comment in, because I have a vector which works on numerical indexes for keys and the `:idea` key doesn't yield the comments and keywords. 
 
--- to do, show current solution and explain
+It's left me with a hacky solution, no doubt I'll change it in a later iteration, but let's take a look:
+
+  ```Clojure
+  ;; first we need to find the index, using the idea we're passed as an indicator
+  (defn finding-index [db idea]
+  (.indexOf db 
+           (first (filterv #(= (:idea %) idea) db))))
+   
+  ;; I'll pass it to the update-in fn so as to target the right map 
+  (defn update-ideas [db idea k f v]
+   "Takes the database of ideas, currently the vector, the idea we need to insert a comment or keyword into
+   , with k signalling either :comment or :keyword. f will typically be conj for adding , and some a remove function
+   for taking elements out , v is the value to be put in or grabbed out"
+   (update-in db [(finding-index db idea) k] f v))
+
+  ```
   
+So , if we wished to add a comment to a given idea, we would :
+
+  ```Clojure
+  ;; given the db , idea and comment 
+;; add to that particular vector
+(rf/reg-event-db
+  :add-comment
+  [->storage]
+  (fn [db [_ idea comment]]
+    (update-ideas db idea :comments conj comment)))
+  ```
