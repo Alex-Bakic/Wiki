@@ -81,3 +81,25 @@ So , if we wished to add a comment to a given idea, we would :
   (fn [db [_ idea comment]]
     (update-ideas db idea :comments conj comment)))
   ```
+  
+Likewise, if we were going to remove a comment or a keyword, I would specify a remove function, as update-in feeds it the collection first not the function. 
+
+  ```Clojure
+  ;; also need to remember vec as we want the data to be added chronologically.
+  (defn remove-comment [db comment]
+    (vec (remove #(= % comment) db)))
+  ;; the db is in the vector , and we cycle through the elements to find the one that 
+  ;; matches and remove it.
+  
+  ;; using this in the update-ideas function for the comment and keyword event handlers
+  
+  ;; in the comment handler
+  (update-ideas db idea :comments remove-comment comment)
+  
+  ;; in the keywords handler
+  (update-ideas db idea :keywords conj kw)
+  ```
+  
+So at this stage , we've got all the subscriptions and all the event handlers working and ready. Now it's time for the fun part and to add some ui to this application.  
+
+I've included [Bootstrap](https://getbootstrap.com) just to make things a lot simpler, but I'll add more bits and pieces to the [sketchy.css](https://github.com/Alex-Bakic/Sketchy/blob/master/resources/public/css/sketchy.css) as we go along. 
