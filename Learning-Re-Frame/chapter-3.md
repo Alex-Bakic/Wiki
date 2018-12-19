@@ -100,6 +100,8 @@ Likewise, if we were going to remove a comment or a keyword, I would specify a r
   (update-ideas db idea :keywords conj kw)
   ```
   
-So at this stage , we've got all the subscriptions and all the event handlers working and ready. Now it's time for the fun part and to add some ui to this application.  
+So at this stage , we've got all the subscriptions and all the event handlers working and ready. But we still need to write a few more components. For each idea that gets rendered, we need to show the current comments, if any, then add a button that will allow the user to additional ones. The same goes for keywords. 
 
-I've included [Bootstrap](https://getbootstrap.com) just to make things a lot simpler, but I'll add more bits and pieces to the [sketchy.css](https://github.com/Alex-Bakic/Sketchy/blob/master/resources/public/css/sketchy.css) as we go along. 
+
+
+Now it's time for the fun part and to add some ui to this application. I've included [Bootstrap](https://getbootstrap.com) just to make things a lot simpler, but I'll add more bits and pieces to the [sketchy.css](https://github.com/Alex-Bakic/Sketchy/blob/master/resources/public/css/sketchy.css) as we go along. 
