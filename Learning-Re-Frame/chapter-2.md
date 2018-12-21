@@ -119,8 +119,8 @@ Currently, it looks like this:
     (fn [_ _]
       db))
   ```
-
-Now I'm going to make a shift away from the [external library](https://github.com/alandipert/storage-atom) for the local storage, because the number of interceptors we will define aren't many and it is quite straightforward to just make a reference to `js/localStorage`. There are only two functions which we will need to implement , a wrapper around `.getItem` and a wrapper around `setItem` for storing ideas.
+ 
+Due to those reasons that I explained above, I've made the desicion to make the shift away from the [external library](https://github.com/alandipert/storage-atom) for the local storage, because the number of interceptors we will define aren't many and it is quite straightforward to just make a reference to `js/localStorage`. There are only two functions which we will need to implement , a wrapper around `.getItem` and a wrapper around `setItem` for accessing and persisting ideas.
 
   ```Clojure
   (def ls-key "db")                 
@@ -135,15 +135,15 @@ Now I'm going to make a shift away from the [external library](https://github.co
   ```
 Now we've specified the code that we want to run before/after our handlers do there work, but what about before? What re-frame wants us to do is register an `effect handler` which will inject the effects, the state from local-storage, into the argument list of an event handler of our choosing. Now we only want to inject the local-storage state into the `:initialise` event handler as we want to state off each application session with any data from the last. 
   
-  ```
+  ```Clojure
   (rf/reg-cofx
     :local-store-ideas
     (fn [cofx _]
-        ;; put the localstore todos into the coeffect 
-        ;; under :local-store-todos
+        ;; put the localstore ideas into the coeffect map 
+        ;; with they key :local-store-ideas
         (assoc cofx :local-store-ideas
-               ;; read in todos from localstore
-               ;; and process into a sorted map
+               ;; read in the data from localstore
+               ;; and put it all into the vector.
                (into []
                      (some->> (.getItem js/localStorage ls-key)
                               (cljs.reader/read-string))))))
