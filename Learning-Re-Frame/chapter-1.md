@@ -55,7 +55,7 @@ We're just going to watch the array , for now there is no need to return a given
 
 So , to recap. We've defined the structure of our data , the operations on the data (the event handlers) and the requests for data (subscriptions). All that's left really is to define some views to use all this stuff...
   
-The first thing we need to be able to do is add ideas to the db. A common technique used for input boxes is to define a reagent atom , which initially just has `""` as the value, but `:on-change` it is updated. So that when they're ready to add the idea it is all there. Of course we also need to describe a button, which when clicked on should dispatch the `:add-idea` event handler.
+The first thing we need to be able to do is add ideas to the db. A common technique used for input boxes is to define a reagent atom , which initially just has `""` as the value, but with `:on-change` it is updated. So that when they're ready to add the idea it is all there. Of course we also need to specify a button, which when clicked on should dispatch the `:add-idea` event handler.
 
   ```Clojure
   (defn new-idea []
@@ -63,13 +63,14 @@ The first thing we need to be able to do is add ideas to the db. A common techni
     (let [val (r/atom "")]
       (fn []
         ;; the "#" indicates the id of this div
+        ;; likewise "." indicates the class of a div, or any component for that matter
         [:div#new-idea
          [:input {:type "text"
-                  :placeholder "Enter some ideas you have"
+                  :placeholder "Enter an idea"
                   :value @val
                   :on-change #(reset! val (-> % .-target .-value))}]
                   ;; this resets val to the data inside the input box, which is inside the 
-                  ;; event.target.value js property. This is covered in the intro.md file
+                  ;; event.target.value js property. 
          [:button {:on-click #(rf/dispatch [:add-idea @val])}
           "Add"]])))
   ```
@@ -84,15 +85,33 @@ Ok now we need the ability to actually see what we've added, so I'll define the 
       "Delete"]])
   ```
   
-With this functionality, `for` every idea we'll call this function and pass it the idea.
+With this functionality, `for` every idea we'll call the above function and pass it the idea.
 
   ```Clojure
+   ;; inside the show-all-ideas view
    [:ul
     (for [i @db]
       [show-idea i])])
   ```
 
-This is what's great about using re-frame, and clojure for that matter. It's all data, so we can pass the `for` macro as long as it returns an appropriate value. Now we'll need the db to be passed in, so in our final ui component (the wrapper for the app) we'll have to take the db as an argument. 
+This is what's great about using re-frame, and clojure for that matter. **It's all data**, so we can pass the `for` macro as long as it returns an appropriate value.
+
+But there is something that slightly rains on our parade, which is if we run this we get an error along the lines of: 
+ `Warning: Every element in a seq should have a unique :key`. The thing specifiying each list item is not the data (as we could have bullet points that have the same text) , the underlying keys that make items unique are ignored as the for macro doesn't concern itself with the semantics. 
+
+We have a few solutions to this issue, the first being:
+
+  ```Clojure
+   [:ul
+    (for [i @db]
+      ^{:key idea} [show-idea i])])
+      ;; now a key is specified and it will be hashed. The hashing algorithm will deal
+      ;; with any collisions
+  ```
+
+The other would be wrapping it with `into` and having a div as the container for all the elements. Consult [this answer](https://stackoverflow.com/questions/33446913/reagent-react-clojurescript-warning-every-element-in-a-seq-should-have-a-unique) for more on this topic. 
+
+That aside,  we'll need the db to be passed in, which holds all the ideas we shall render. So in our final ui component (the wrapper for the app) we'll have to take the db as an argument. 
 
   ```Clojure
   
@@ -114,29 +133,15 @@ This is what's great about using re-frame, and clojure for that matter. It's all
   ```
 Whilst there is anything *technically* wrong with this, and it will allow you to add and remove data it isn't very efficient. This is because , in the `start` function, the *entire* ui is subscribing to `:ideas`, meaning for every change there has to be a complete re-rendering. 
 
-What makes re-frame so good is that we can make things so efficient, so easily. Just by breaking up components into the smallest possible bits, they can subscribe to data and only those bits change when they have to. In this case the functionality which needs the db is our little `for` macro code for generating all the ideas. If we just move this out,
+What makes re-frame so good is that we can make things so efficient, so easily. Just by breaking up components into the smallest possible bits, they can subscribe to data and only those bits change when they have to. In this case the functionality which needs the db is our little `for` macro code for generating all the ideas.
 
   ```Clojure
   (defn show-all-ideas []
     (let [db (rf/subscribe [:ideas])]
       [:ul
-        (for [i @db] [show-idea i])])) 
+        (into [:div#ideas-list] (for [i @db] [show-idea i]))])) 
   ```
-  
- Now we just reference this component in the ui and this is much more efficient. However, we now seem to get this error:
  
- ```Warning: Every element in a seq should have a unique :key```
- 
-Now this error comes from Reagent, when rendering, as it is concerned that we are generating code which have "identical" keys. What this means is as the list of items grows in size, it makes it difficult for the underlying system to optimise the rendering. The solution to this is to wrap it all in a `:div`, or `(into [:div] (for [i @db] ...))` which also works as the item are wrapper in a unique divider. It's not uncommon to see this as well though, for dynamically generated children nodes:
-
-  ```Clojure
-  (defn show-all-ideas []
-    (let [db (rf/subscribe [:ideas])]
-    [:ul
-     (for [i @db]
-       ^{:key i} [show-idea i])])) ;; this will make sure that there is a map containing a unique pair for every element
-  ```
-  
  Now then, with those switches, our `ui` looks like this:
  
   ```Clojure
@@ -173,7 +178,7 @@ Now this error comes from Reagent, when rendering, as it is concerned that we ar
     (rf/dispatch-sync [:initialise])
     (r/render [ui] (.getElementById js/document "root")))
   ```
-This app's about to get a lot more interesting. But to accomodate the complexity, we're going to have to split this core file up. Due to the fact we're going to be adding more handlers, more components which will completely convolute our core file. What we can do is put all the ui elements into a `components` folder, the event-handlers into an `events` file, the subscriptions in another etc. 
+This app's about to get a lot more interesting. But to accomodate the complexity, we're going to have to split this core file up. Due to the fact we're going to be adding more handlers, more components which will completely convolute our core file. What we can do is put all the ui elements into a `components` folder, the event-handlers into an `events` file, the subscriptions in another file etc. 
 
 So, doing a before and after on the project structure:
 
