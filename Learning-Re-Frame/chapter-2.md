@@ -1,8 +1,7 @@
 ## Learning Re-Frame Chapter 2
 
-In this section we're going to be looking at adding local storage to persists the data, along with the ability to add 
-comments and ratings. It's going to require a few handlers , a lot more subscriptions (up to now we've only had 1!) and a 
-lot more components rendering all this new data. Speaking of which, our db needs a serious remodelling.
+In this section we're going to be looking at adding local storage to persist the data, along with the ability to add 
+comments and keywords. It's going to require a few handlers , a lot more subscriptions (up to now we've only had 1!) and a lot more components rendering all this new data. Speaking of which, our db needs a serious remodelling.
 
 We are no longer accomodating just the ideas the user enters, we're going to track the comments as well. We're also going to allow the user to add keywords, sort of like hashtags, that tell themselves (or other people) what type of idea it is: a sketch, a one-liner or a story etc. We'll need a vector to keep some order, as ideas should be presented chronologically, which normal sets and maps don't do. Each element in the vector will be a map, which contains all the data for each idea , using the `:idea`, `:comments` and `:keywords` keys for each value. 
 
@@ -73,7 +72,7 @@ So what gives? Essentially it's saying our `show-ideas` component is dereferenci
 
   ```Clojure
 (defn show-all-ideas []
- (let [db (rf/subscribe [:ideas])] 
+  (let [db (rf/subscribe [:ideas])] 
    [:ul (into [:div#ideas-list] 
               (for [i @db] (show-idea i)))]))
   ```
@@ -93,9 +92,13 @@ Now there's nothing wrong with *this*, `subscribe` does return an atom, a reagen
     (fn [db _]
       (mapv :idea @db)))
   ```
-Now, it shows the `:ideas` subscription expects an atom, which would make sense as that is what our state is defined to be. But when does the subscription change? When the db is altered by the affect of an event handler. Moreover, we can deduce the event handler is the culprit! Inside our `add-idea` handler, when we `swap!` we *did not return an atom, but the vector, showing the state changes*. So when we dereference the vector it brings up our error. Now, you might try and hack a solution together by wrapping `(atom (swap! ...))` on every event handler, but we know that when we start doing that there is a mistake in our architecture. In fact, re-frame is aware of this danger and has a tool we can use to keep our event handlers clean, welcome to the stage **Interceptors**.
+Now, it shows the `:ideas` subscription expects an atom, which would make sense as that's what we defined inside the atom. 
 
-One way of understanding the raison d'etre of interceptors is to look at a factory's innerworkings. One machine will expect a product fed to it every second or so, to package into a box and seal it. Now the company may decide to change the design , or the logo that's going to be stamped on the box. But this shouldn't concern the machine one bit. It should be focused on packaging , and someone else can style it however they like after it's done. 
+But when does the subscription change? 
+
+When the db is altered by the affect of an event handler. Moreover, we can deduce the event handler is the culprit! Inside our `add-idea` handler, when we `swap!` we *did not return an atom, but the vector, showing the state changes*. So when we dereference the vector it brings up our error. Now, you might try and hack a solution together by wrapping `(atom (swap! ...))` on every event handler, but we know that when we start doing that there is a mistake in our design. In fact, re-frame is helps us avoid this danger and has a tool we can use to keep our event handlers clean, welcome to the stage **Interceptors**.
+
+One way of understanding the raison d'etre of interceptors is to look at a factory's innerworkings. One machine will expect a product fed to it every second or so, to package into a box and seal it. Now the company may decide to change the design , the brand or the logo that's going to be stamped on the box. But this shouldn't concern the machine one bit. It should be focused on packaging , and someone else can style it however they like **before or after it's done**. 
 
 Now imagine that one machine is like on of our event handlers, working hard at a particular task. Our interceptors are the procedures that happen before or after we start the work to simplify the problem of doing the task itself. They help setup event handlers before they run, or after they've run and use the data they output.
 
@@ -103,24 +106,9 @@ So in our case, we might use an interceptor before one of our event handlers run
 
 That's the plan. Now , as interceptors work closely with the db it's nicer to specify all that stuff in a separate file called `db.cljs` which will make things a bit clearer. 
 
-Currently, it looks like this:
+As the number of interceptors we are going to define aren't many , just one, and it is quite straightforward to just make references to the underlying `js/localStorage` we will only need a few wrappers for getting and setting data. Moreover, I'm going to move away from using the [external library](https://github.com/alandipert/storage-atom) as its overkill for this little project.
 
-  ```Clojure
-  (ns sketchy.db 
-    (:require [re-frame.core :as rf]))
-
-  ;; app state
-  ;; each entry in the vector will be a map of the form:
-  ;; {:idea "something..." :comments [] :rating 0}
-  (def db (atom []))
-
-  (rf/reg-event-db
-    :initialise
-    (fn [_ _]
-      db))
-  ```
- 
-Due to those reasons that I explained above, I've made the desicion to make the shift away from the [external library](https://github.com/alandipert/storage-atom) for the local storage, because the number of interceptors we will define aren't many and it is quite straightforward to just make a reference to `js/localStorage`. There are only two functions which we will need to implement , a wrapper around `.getItem` and a wrapper around `setItem` for accessing and persisting ideas.
+Here is interceptor that will be a wrapper for all our event handlers, and take whatever data they return and use it and perform a *side effect* (not disturbing the natural pipeline) , in this case going off and writing the data structure into an EDN map for local storage.
 
   ```Clojure
   (def ls-key "db")                 
@@ -133,7 +121,7 @@ Due to those reasons that I explained above, I've made the desicion to make the 
     ;; and update the local-storage with that data.
 
   ```
-Now we've specified the code that we want to run before/after our handlers do there work, but what about before? What re-frame wants us to do is register an `effect handler` which will inject the effects, the state from local-storage, into the argument list of an event handler of our choosing. Now we only want to inject the local-storage state into the `:initialise` event handler as we want to state off each application session with any data from the last. 
+Now we've specified the code that we want to run after our handlers do there work, but what about before? What re-frame lets us do is register an `effect handler` which will inject the effects, the state from local-storage, into the argument list of an event handler of our choosing. Now we only want to inject the local-storage state into the `:initialise` event handler as we want to state off each application session with any data from the last. 
   
   ```Clojure
   (rf/reg-cofx
@@ -151,7 +139,7 @@ Now we've specified the code that we want to run before/after our handlers do th
   ```
 A subtle intricacy of the `cofx` we registered is the `(into [] ...)` bit. Because what we are getting out of there *is* the vector that other handlers have tweaked and modified. We're not reading every map one by one into a vector, we are just evaluating the one vector which holds all the maps in there. So you'd think we'd end up with a collection like `[[{:idea "..."}]]` but in fact `into` is smart enough to just return the vector itself which means our handlers can work like normal. Also if there is nothing in local-storage, then into will return the empty vector.
 
-So cofx is the first argument that is passed to every map, we are going to be adding the `:local-store-ideas` key to those affects. So now, in our `events.cljs` file when we specify the `:initialise` we are going to inject the data from that key into the first argument of the map. 
+So cofx is the first argument that is passed to every handler, we are going to be adding the `:local-store-ideas` key to the prescribed affects. So now, in our `events.cljs` file when we specify the `:initialise` event handler we are going to inject the data from the interceptor into the first argument. 
 
   ```Clojure
   ;; in our events.cljs file
@@ -175,14 +163,13 @@ So cofx is the first argument that is passed to every map, we are going to be ad
     {:db local-store-ideas}))
   ```
   
-The next step is to define some interceptors for the `:add-idea` and `remove-idea` handlers so that we retain the shape of the data that return. 
+The next step is to define an interceptor that will allow any event handler to write it's changes to local storage.
 
   ```Clojure
-  ;; for the add-idea
-  ;; after specifies that we want to do this after our event handler is run
+  ;; use the functionality we define in db.cljs to be used **after** each event handler has been run
   (def ->storage (rf/after d/ideas->storage))
   
-  ;; so now we not only to the in-memory db , but we add to storage
+  ;; so now we not only do we modify the in-memory db, but also the local storage
   (rf/reg-event-db
   :add-idea
   [->storage]
