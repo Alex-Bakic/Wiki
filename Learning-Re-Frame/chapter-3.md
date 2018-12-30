@@ -142,29 +142,29 @@ Now the crux of the application is taking ideas as input, so let's define an inp
 
   ```Clojure
   (defn add-idea []
-  (let [val (r/atom "")
+    (let [val (r/atom "")
         ;; the subscription shouldn't be referenced as well here, as
         id (rf/subscribe [:last-id])]
-    ;; if you're using let forms to define data, you need to return a render fn
-    ;; just using the let and no function we wouldn't be able to type anything
-    ;; into the input. As the val defined would not be properly referenced.
-    (fn []
-      ;; using bootstrap to style the input to look less awful
-      [:div {:class "row"}
-        [:div {:class "col-lg-6"} 
-         [:div {:class "input-group input-group-lg input-container "}
-           [:input {:type "text"
-                    :class "form-control add-idea"
-                    :placeholder "save something!"
-                    :value @val
-                    :on-change #(reset! val (-> % .-target .-value))}]
-           [:button {:class "btn btn-default" 
-                     :on-click #(rf/dispatch [:add-idea (inc @id) @val])}
-             ;; use of the font awesome icons too
-             [:i {:class "far fa-lightbulb"}]]]]])))
-
+      ;; if you're using let forms to define data, you need to return a render fn
+      ;; just using the let and no function we wouldn't be able to type anything
+      ;; into the input. As the val defined would not be properly referenced.
+      (fn []
+        ;; using bootstrap to style the input to look less awful
+        [:div {:class "row"}
+          [:div {:class "col-lg-6"} 
+           [:div {:class "input-group input-group-lg input-container "}
+             [:input {:type "text"
+                      :class "form-control add-idea"
+                      :placeholder "save something!"
+                      :value @val
+                      :on-change #(reset! val (-> % .-target .-value))}]
+             [:button {:class "btn btn-default" 
+                       :on-click #(rf/dispatch [:add-idea (inc @id) @val])}
+               ;; use of the font awesome icons too
+               [:i {:class "far fa-lightbulb"}]]]]])))
   ```
 
-Try it, swap between the render fn [(a level 2 component)](https://github.com/reagent-project/reagent/blob/master/doc/CreatingReagentComponents.md#form-2--a-function-returning-a-function) and just returning the data [(a level 1 component)](https://github.com/reagent-project/reagent/blob/master/doc/CreatingReagentComponents.md#form-1-a-simple-function).
+Try it, swap between the render fn [(a level 2 component)](https://github.com/reagent-project/reagent/blob/master/doc/CreatingReagentComponents.md#form-2--a-function-returning-a-function) and just returning the data [(a level 1 component)](https://github.com/reagent-project/reagent/blob/master/doc/CreatingReagentComponents.md#form-1-a-simple-function). The thing to remember is that if there is reference to subscriptions, atoms or any dynamic data you need a render function. Otherwise the changes won't be re-rendered as there isn't a function to re-call. In our case for each `on-change` the function would not re-render and we wouldn't see the input change.
 
-So now that's taken care of we now need to focus on
+So now that's taken care of we now need to focus on showing ideas.
+
