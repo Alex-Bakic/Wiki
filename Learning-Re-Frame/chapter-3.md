@@ -137,3 +137,34 @@ So what this allows us to is sift through all the ids and return a list of them 
   ```
 
 So now we've established our db, a way to manipulate the db and a way for the views to see the changes. Now it's time for the fun part and to add some ui to this application. I've included [Bootstrap](https://getbootstrap.com) just to make things a lot simpler, but I'll add more bits and pieces to the [sketchy.css](https://github.com/Alex-Bakic/Sketchy/blob/master/resources/public/css/sketchy.css) as we go along. 
+
+Now the crux of the application is taking ideas as input, so let's define an input field:
+
+  ```Clojure
+  (defn add-idea []
+  (let [val (r/atom "")
+        ;; the subscription shouldn't be referenced as well here, as
+        id (rf/subscribe [:last-id])]
+    ;; if you're using let forms to define data, you need to return a render fn
+    ;; just using the let and no function we wouldn't be able to type anything
+    ;; into the input. As the val defined would not be properly referenced.
+    (fn []
+      ;; using bootstrap to style the input to look less awful
+      [:div {:class "row"}
+        [:div {:class "col-lg-6"} 
+         [:div {:class "input-group input-group-lg input-container "}
+           [:input {:type "text"
+                    :class "form-control add-idea"
+                    :placeholder "save something!"
+                    :value @val
+                    :on-change #(reset! val (-> % .-target .-value))}]
+           [:button {:class "btn btn-default" 
+                     :on-click #(rf/dispatch [:add-idea (inc @id) @val])}
+             ;; use of the font awesome icons too
+             [:i {:class "far fa-lightbulb"}]]]]])))
+
+  ```
+
+Try it, swap between the render fn [(a level 2 component)](https://github.com/reagent-project/reagent/blob/master/doc/CreatingReagentComponents.md#form-2--a-function-returning-a-function) and just returning the data [(a level 1 component)](https://github.com/reagent-project/reagent/blob/master/doc/CreatingReagentComponents.md#form-1-a-simple-function).
+
+So now that's taken care of we now need to focus on
