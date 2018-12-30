@@ -83,8 +83,57 @@ In fact, the only helper functions that I'll need is to sift through all the com
       (update-in db [id :keywords] delete-item kw)))
   ```
   
-And that's all for the `events.cljs` file. It is much more readable and maintainable, the `subscriptions.cljs` is a bit interesting as I implement a new trick I've learnt. 
- 
---- 
+And that's all for the `events.cljs` file. It is certainly simpler but as we take a look at the  `subscriptions.cljs` file it is a bit more interesting as I implement a new trick I've learnt. 
 
-Now it's time for the fun part and to add some ui to this application. I've included [Bootstrap](https://getbootstrap.com) just to make things a lot simpler, but I'll add more bits and pieces to the [sketchy.css](https://github.com/Alex-Bakic/Sketchy/blob/master/resources/public/css/sketchy.css) as we go along. 
+First off I thought it would be good for handlers to avoid having to make calculations for the last-id every time they want to add an idea, and what a subscription could do is have that number already stored by doing 
+
+  ```Clojure
+  (last (keys db))
+  ```
+ 
+This way it saves doing the re-calculation. But for a subscription to use this it has to then subscribe to it themselves. For a subscription to do this we need to specify what is called a `signal` function. How I think of it is like an interceptor in that it will supply the subscriptions to the first argument of our actual subscription fn, and allow us to use them directly.
+
+  ```Clojure
+  ;; simple sub, no signal fn
+  (reg-sub 
+    :last-id
+    (fn [db [_ _]]
+      (last (keys db))))
+  
+  ;; I define this sub as the signal fn effectively supplies all the data
+  ;; that the subscription fn will have access to, we of course want it to have
+  ;; access to the actual db.
+  (reg-sub
+    :db
+    (fn [db _]
+       db))
+  
+  ;; to use :last-id, need to use signal fn
+  (reg-sub
+    :ideas
+     ;; this is the signal fn. As we have multiple things we want to watch, we put them all in 
+     ;; a vector to return.
+     (fn [query-v _]
+       [(subscribe [:db])
+        (subscribe [:last-id])])
+      ;; destructure the data out and use for simpler calculations.
+      (fn [[db last-id] _]
+      ;; as range is start inclusive end exclusive
+        (for [id (range 0 (inc last-id))] (get-in db [id :idea]))))
+  ```
+
+So what this allows us to is sift through all the ids and return a list of them for the view to render. Now as for the other subscriptions it is fairly simple as all the `:comments`/`:keywords` need is the `id` and they subscribe to the relevant metadata.
+
+  ```Clojure
+  (reg-sub
+    :comments 
+    (fn [db [_ id]]
+      (get-in db [id :comments])))
+
+  (reg-sub
+    :keywords
+    (fn [db [_ id]]
+      (get-in db [id :keywords])))
+  ```
+
+So now we've established our db, a way to manipulate the db and a way for the views to see the changes. Now it's time for the fun part and to add some ui to this application. I've included [Bootstrap](https://getbootstrap.com) just to make things a lot simpler, but I'll add more bits and pieces to the [sketchy.css](https://github.com/Alex-Bakic/Sketchy/blob/master/resources/public/css/sketchy.css) as we go along. 
