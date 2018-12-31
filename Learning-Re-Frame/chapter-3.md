@@ -138,7 +138,55 @@ So what this allows us to is sift through all the ids and return a list of them 
 
 So now we've established our db, a way to manipulate the db and a way for the views to see the changes. Now it's time for the fun part and to add some ui to this application. I've included [Bootstrap](https://getbootstrap.com) just to make things a lot simpler, but I'll add more bits and pieces to the [sketchy.css](https://github.com/Alex-Bakic/Sketchy/blob/master/resources/public/css/sketchy.css) as we go along. 
 
-Now the crux of the application is taking ideas as input, so let's define an input field:
+First we need to go into `resources/public/index.html` and make sure we've specified our scripts, our stylesheets and that we've called our `sketchy.core.start` function. Now we can use [figwheel](https://github.com/bhauman/lein-figwheel) to test and manage our ui components, which is a major plus.
+
+  ```html
+  <!doctype html>
+  <html>
+    <head>
+      <title>Sketchy</title>
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+      <link rel="stylesheet" href="css/sketchy.css">
+      <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+    </head>
+    <body>
+      <h1>Welcome to Sketchy, share an idea today</h1>
+      <div id="root"></div>
+      <script src="js/client.js"></script>
+      <script>sketchy.core.start()</script>
+    </body>
+  </html>
+  ```
+
+The reason we have two scripts instead of just calling the function when we source our code is that the first script *just* sources it and doesn't evaulate references we make to that file. To do that we would make a call after, as when it has evaluated it'll move onto the next tag, which is our last script and invoke it to start the application.
+
+As for what's being started up, let's look in the `core.cljs` file
+
+  ```Clojure
+  (ns sketchy.core
+    (:require [reagent.core :as r]
+              [re-frame.core :as rf]
+              [sketchy.components.show-ideas :refer [show-all-ideas]]
+              [sketchy.components.add-ideas :refer [add-idea]]
+              [sketchy.db :as d]
+              [sketchy.events :as e]
+              [sketchy.subs :as s]))
+
+  (defn ui []
+    [:div {:class "ui"}
+     [:div {:class "ui-input"} 
+      [add-idea]]
+     [:div {:class "ui-header"}
+      [:h1 "All your ideas"]]
+     [:div {:class "ui-content"} 
+      [show-all-ideas]]])
+
+  (defn ^:export start []
+    (rf/dispatch-sync [:initialise])
+    (r/render [ui] (.getElementById js/document "root")))
+  ```
+
+Now the crux of the application is taking ideas as input, so let's define our `add-idea` component:
 
   ```Clojure
   (defn add-idea []
@@ -168,3 +216,74 @@ Try it, swap between the render fn [(a level 2 component)](https://github.com/re
 
 So now that's taken care of we now need to focus on showing ideas.
 
+The way I'm going to show the ideas is using [cards](https://getbootstrap.com/docs/4.0/components/card/). The idea will the `card-title`, the keywords will be little buttons in the `card-subtitle` and the comments are going to be a list of items in the `card-body`. We will have to reference the corresponding views for showing comments and such in the `show-idea` , as some of these views need the idea that gets passed along to render specific data. 
+
+  ```Clojure
+  ;; for each individual card
+  (defn show-idea [id idea]
+    [:div {:class "col-sm-6"}
+                   [:div {:class "card"}
+                    [:div {:class "card-body"}
+                     [:h3 {:class "card-title"} 
+                      ;; gap is just so the button doesn't stick. Simpler than specifiying a 
+                      ;; class just to give a bit of margin-left
+                      (str idea "  ")
+                      [:button  {:class "btn btn-default" :on-click #(rf/dispatch [:remove-idea id])}
+                       [:i {:class "fas fa-minus"}]]]
+
+                     ;; part for the add - and - show keywords views
+                     [show-all-keywords id]
+                     [add-keyword id idea]
+
+                     ;; part for the add - and - show comments views
+                     ;; add-comment is included as the first list item in 
+                     ;; show-all-comments
+                     [show-all-comments id]]]])
+  ```
+  
+Now all that's left is to allow the user to add keywords and comments and that's it.
+  
+For adding keywords it'll be a simple, small input box in the card's subtitle area, and the keywords themselves should be buttons that remove themselves when clicked on.
+
+  ```Clojure
+  (defn add-keyword [id idea]
+    (let [val  (r/atom "")
+          clear #(reset! val "")
+          save #(rf/dispatch [:add-keyword id @val]
+                 (clear))]
+      (fn [id idea]
+        [:div {:class "input-group input-group-sm mb-3"} 
+          [:input {:type "text"
+                   :class "form-control"
+                   :placeholder "Keywords here"
+                   :value       @val
+                   :auto-focus  true
+                   :on-change   #(reset! val (-> % .-target .-value))
+                   :on-key-down #(case (.-which %)
+                                        13 (save)
+                                        nil)}]])))
+  ```
+
+I wanted to have the input for the keyword succint and the button makes it look cluttered, so I added the ability for the user to just press enter when they're done typing. I'll add it to the comments input for the same reason, but I like the button for the idea input as it's meant to be a big moment when you add it, as the idea is important. It removes the implusivity of adding any old idea that comes to mind.
+
+Moving on, we now need to show all the keywords. Meaning we need to be subscribed to the current set, given an idea, and insert the buttons into the `card-subtitle`.
+
+  ```Clojure
+  ;; for one keyword
+  (defn show-keyword [id kw]
+    ;; kw-btn is just a few tweaks to the button, found in sketchy.css
+    [:button {:class "btn btn-info kw-btn"
+              :on-click #(dispatch [:remove-keyword id kw])}
+      [:span [:h6 (str kw)]]])
+
+  ;; for every keyword
+  (defn show-all-keywords [id]
+    (let [kws (subscribe [:keywords id])]
+      ;; remember that this is how
+      (into [:div {:class "card-subtitle"}] 
+            (for [kw @kws] 
+              [show-keyword id kw]))))
+  ```
+
+And lastly, for the comments
+  
