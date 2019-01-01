@@ -100,7 +100,7 @@ This way it saves doing the re-calculation. But for a subscription to use this i
     (fn [db [_ _]]
       (last (keys db))))
   
-  ;; I define this sub as the signal fn effectively supplies all the data
+  ;; I define this sub as the signal fn effectively supplyig all the data
   ;; that the subscription fn will have access to, we of course want it to have
   ;; access to the actual db.
   (reg-sub
@@ -109,6 +109,8 @@ This way it saves doing the re-calculation. But for a subscription to use this i
        db))
   
   ;; to use :last-id, need to use signal fn
+  ;; could make the reference in the subscription fn, but it is nicer to separate it
+  ;; so that it makes it easier to add more , or less , subs in the future.
   (reg-sub
     :ideas
      ;; this is the signal fn. As we have multiple things we want to watch, we put them all in 
@@ -122,7 +124,7 @@ This way it saves doing the re-calculation. But for a subscription to use this i
         (for [id (range 0 (inc last-id))] (get-in db [id :idea]))))
   ```
 
-So what this allows us to is sift through all the ids and return a list of them for the view to render. Now as for the other subscriptions it is fairly simple as all the `:comments`/`:keywords` need is the `id` and they subscribe to the relevant metadata.
+So what this allows us to do is sift through all the ids and return a list of them for the view to render. Now as for the other subscriptions it is fairly simple as all the `:comments`/`:keywords` need is the `id` and they subscribe to the relevant metadata.
 
   ```Clojure
   (reg-sub
@@ -285,5 +287,49 @@ Moving on, we now need to show all the keywords. Meaning we need to be subscribe
               [show-keyword id kw]))))
   ```
 
-And lastly, for the comments
+And lastly, for the comments. It will be a list of items, with the first being the input to take comments which will become future list-items. 
+
+  ```Clojure
+  ;; it will be the first element in the list group , 
+  ;; being the "active" list item where there is an input
+  ;; box to add, following similar mechanisms to the add
+  ;; keywords functionality.
+  (defn add-comment [id]
+     (let [val (r/atom "")
+           clear #(reset! val "")
+           save #(dispatch [:add-comment id @val]
+                 (clear))] 
+        (fn [id]
+           [:li {:class "list-group-item active"}
+             [:div {:class "input-group input-group-sm mb-3"} 
+                [:input {:type "text"
+                 :class "form-control"
+                 :placeholder "Add a comment"
+                 :value       @val
+                 :auto-focus  true
+                 :on-change   #(reset! val (-> % .-target .-value))
+                 :on-key-down #(case (.-which %)
+                                     13 (save)
+                                     nil)}]]])))
+  ```
   
+Now to define the other list-items. We'll subscribe to `:comments` and for each item we'll make it a list-item that gets added to the overall list.
+
+  ```Clojure
+  ;; just do a simple list for now, with each comment being a list item.
+  (defn show-comment [id comment]
+     [:li {:class "list-group-item"} 
+       [:b {:class "comments"} [:h5 (str comment " ")]]
+       [:button {:class "btn btn-default"
+                 :on-click #(dispatch [:remove-comment id comment])} 
+         [:i {:class "fas fa-minus"}]]])
+
+  ;; show the list with every list item
+  (defn show-all-comments [id]
+    (let [comments (subscribe [:comments id])] 
+      [:div {:class "card-body"}
+        (into [:ul {:class "list-group"} [add-comment id]] 
+              (for [comment @comments] (show-comment id comment)))]))
+  ```
+  
+We've already specified all the components in the `show-ideas.cljs` file, and [Sketchy](https://www.github.com/Alex-Bakic/Sketchy) is functional and ready to be put to use. And with that, comes the end to this chapter.
