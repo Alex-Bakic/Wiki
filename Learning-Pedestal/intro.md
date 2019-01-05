@@ -68,3 +68,6 @@ Now in the repl we can import the `hello.clj` file and call the handler function
   ;; --> {:status 200 :body "Hello, World!"}
 ```
 Now we're not exactly reaping all the rewards of doing it in this way yet, but imagine if we could supply example maps: with one being a valid user with the correct token and another being an invalid user you could test whether the handler only serves the valid client. 
+
+The next thing to do is add this handler to the routing table, specifically to match under the `/greet` resource path. 
+
