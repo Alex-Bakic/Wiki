@@ -30,7 +30,7 @@ So, to define a simple handler we can do:
             [io.pedestal.http.route :as route])) ;; this will define the site's routing
             
   ;; our handler           
-  (defn respond-hello [request]
+  (defn greeting [request]
     {:status 200 :body "Hello, world!"})
   ```
 
