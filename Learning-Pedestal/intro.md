@@ -71,3 +71,6 @@ Now we're not exactly reaping all the rewards of doing it in this way yet, but i
 
 The next thing to do is add this handler to the routing table, specifically to match under the `/greet` resource path. 
 
+------------------------------------------------
+
+The next example, which takes it a step up and includes clojurescript is from the [luminus samples](https://github.com/luminus-framework/examples/tree/master/guestbook-cljs) actually. This is a great simple example, as it shows how ClojureScript and Clojure interact through the Ajax abstraction and through routing. And that is what we will examine next.
